@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat Realtime with Users</title>
+  <style>
+    body { font-family: Arial, sans-serif; }
+    ul { list-style-type: none; padding: 0; }
+    li { padding: 8px; margin-bottom: 2px; background: #f2f2f2; }
+    input { padding: 8px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Chat Realtime</h1>
+
+  <h3>Online Users</h3>
+  <ul id="usersList"></ul>
+
+  <h3>Chat</h3>
+  <ul id="messages"></ul>
+
+  <input id="recipientInput" autocomplete="off" placeholder="Recipient (optional)" />
+  <input id="messageInput" autocomplete="off" placeholder="Type a message..." />
+  <button id="sendButton">Send</button>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    const usersList = document.getElementById('usersList');
+    const messageInput = document.getElementById('messageInput');
+    const recipientInput = document.getElementById('recipientInput');
+    const sendButton = document.getElementById('sendButton');
+    const messagesList = document.getElementById('messages');
+
+    // Cập nhật danh sách người dùng online
+    socket.on('update_user_list', (users) => {
+      usersList.innerHTML = '';
+      users.forEach(user => {
+        const li = document.createElement('li');
+        li.textContent = user;
+        usersList.appendChild(li);
+      });
+    });
+
+    // Khi nhấn nút gửi tin nhắn
+    sendButton.addEventListener('click', () => {
+      const recipient = recipientInput.value.trim();
+      const msg = messageInput.value.trim();
+      if (msg !== '') {
+        socket.emit('send_message', { recipient, message: msg });
+        messageInput.value = '';
+      }
+    });
+
+    // Nhận tin nhắn từ người dùng khác
+    socket.on('private_message', (data) => {
+      const li = document.createElement('li');
+      li.textContent = `${data.sender}: ${data.message}`;
+      messagesList.appendChild(li);
+    });
+
+    // Nhận thông báo lỗi
+    socket.on('error', (data) => {
+      alert(data.message);
+    });
+  </script>
+</body>
+</html>
