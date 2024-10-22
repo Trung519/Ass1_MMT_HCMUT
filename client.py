@@ -67,6 +67,7 @@ if __name__ == "__main__":
     # tao luong listen de cac peer khac connect
     Thread(target=peer_server, args=()).start()
     # tao luong de nhan lenh tu user UI
+    Thread(target=userUI, args=()).start()
     # lay metainfo
     # hash_info
     # send request --> receive peers
