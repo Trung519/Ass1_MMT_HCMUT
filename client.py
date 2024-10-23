@@ -5,7 +5,9 @@ from threading import Thread
 import hashlib
 import urllib.parse
 import bencodepy
-
+import uuid
+import os
+from tkinter import Tk, Label, Entry, Button, filedialog, messagebox
 
 peers = []
 
@@ -23,7 +25,7 @@ def get_host_default_interface_ip():
 
 clientip = get_host_default_interface_ip()
 port = random.randint(6000, 7000)
-server_ip = '127.0.0.1'  # Replace this with your server's IP
+server_ip = '127.0.0.1'  # Replace with your server's IP
 server_port = 5000       # Replace with your server's listening port (integer)
 
 clientsocket = socket.socket()
@@ -98,57 +100,94 @@ def connect_to_peer(ip, port, peer_id):
         print(f"Could not connect to {ip}:{port}: {e}")
         return None
 
+# Function to download file using P2P
+def download_file(info_hash, event):
+    peer_id = str(uuid.uuid4())
+    left = 0  # Adjust based on actual download status
+    uploaded = 0
+    downloaded = 0
+
+    url = f"http://{server_ip}:{server_port}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={port}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={clientip}"
+    
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            print(f"Successfully downloaded: {response.text}")
+        else:
+            print(f"Failed to download: {response.status_code} - {response.text}")
+    except Exception as e:
+        print(f"Error during download: {e}")
 
 # Handle new peer connections as the server
 def new_connection(addr, conn):
     print(f"New peer connected from {addr}")
-    # Handle peer communication (file transfer logic can be added here)
-    conn.sendall(b"OK")  # Respond to the peer
+    
+    # Generate server's info_hash and peer_id for demonstration
+    server_info_hash = "server_info_hash"
+    server_peer_id = "server_peer_id"
+    
+    # Send the server's info_hash and peer_id
+    conn.sendall(f"{server_info_hash},{server_peer_id}".encode())
+    
+    # Receive client response
+    response = conn.recv(1024).decode()
+    print(f"Received from peer {addr}: {response}")
+    
     conn.close()
-
 
 # Peer-to-peer server to accept incoming connections
 def peer_server():
     while True:
         addr, conn = clientsocket.accept()
-        # Create a new thread to handle each peer connection
         nconn = Thread(target=new_connection, args=(addr, conn))
         nconn.start()
 
+def select_file():
+    file_path = filedialog.askopenfilename()
+    if file_path:
+        filelength = os.path.getsize(file_path)
+        name = os.path.basename(file_path)
+        
+        with open(file_path, 'rb') as f:
+            file_data = f.read()
+            pieces = hashlib.sha256(file_data).hexdigest()  # Simple hash example
+        
+        hostname = hostname_entry.get()
+        send_filename_to_server(filelength, pieces, name, hostname)
+
+# Function to start the GUI
+def start_upload_gui():
+    global hostname_entry
+    root = Tk()
+    root.title("File Uploader")
+
+    Label(root, text="Enter Hostname:").pack(pady=5)
+    hostname_entry = Entry(root)
+    hostname_entry.pack(pady=5)
+
+    Button(root, text="Select File to Upload", command=select_file).pack(pady=20)
+    root.mainloop()
+
 if __name__ == "__main__":
-    # Start the peer server to listen for connections
     print(f"Listening on: {clientip}:{port}")
+
+    # Start the peer server in a thread
     Thread(target=peer_server, args=()).start()
 
     # Ask the user if they want to upload or download
     action = input("Do you want to upload or download a file? (upload/download): ").lower()
 
     if action == "upload":
-        # If upload is selected, ask for file details
-        if not check_ip_exists(clientip, port):
-            # Only ask for the hostname if IP is not already in the database
-            hostname = input("Enter hostname: ")
-        else:
-            hostname = None
-
-        filelength = input("Enter file length: ")
-        pieces = input("Enter pieces (hash): ")
-        name = input("Enter file name: ")
-
-        # Send filename to the server
-        send_filename_to_server(filelength, pieces, name, hostname)
-
-        # Start peer-to-peer connections for uploading
-        # Example of connecting to another peer (replace with actual peer IP and port)
-        # connect_to_peer('PEER_IP', PEER_PORT, 1)
+        start_upload_gui()
 
     elif action == "download":
-        # If download is selected, ask for the file name to download
-        filename_to_download = input("Enter the file name you want to download: ")
+        info_hash = input("Enter info_hash of the file you want to download: ")
+        event = input("Enter event (started/stopped/completed): ").lower()
 
-        # Start the download process (replace with actual logic)
-        # download_file(filename_to_download)
-        print("success download")
+        if event in ['started', 'stopped', 'completed']:
+            download_file(info_hash, event)
+        else:
+            print("Invalid event. Please enter 'started', 'stopped', or 'completed'.")
 
     else:
         print("Invalid action. Please enter 'upload' or 'download'.")

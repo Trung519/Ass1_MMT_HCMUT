@@ -68,7 +68,6 @@ def track_peer():
 
     # Kiểm tra nếu peer_id đã tồn tại trong collection
     existing_peer = tracking_peer_collection.find_one({"peer_id": peer_id})
-    print ("priririririrr", existing_peer)
 
     peer_data = {
         "info_hash": info_hash,
@@ -104,6 +103,8 @@ def track_peer():
         # Tìm tất cả các peer có info_hash tương ứng
     peers = list(tracking_peer_collection.find({"info_hash": info_hash}))
 
+
+    print("peer has hash info", peers)
     # Tính toán số lượng Complete và Incomplete
     complete_count = sum(1 for peer in peers if peer['left'] == 0)
     incomplete_count = sum(1 for peer in peers if peer['left'] != 0)
