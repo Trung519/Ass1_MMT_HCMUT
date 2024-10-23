@@ -12,7 +12,6 @@ app = Flask(__name__)
 mongo_url = os.getenv('MONGO_URL')
 db_name = os.getenv('DB_NAME')
 
-
 # Kết nối tới MongoDB
 client = MongoClient(mongo_url)
 db = client[db_name]  # Thay 'mydatabase' bằng tên database của bạn
@@ -21,6 +20,34 @@ db = client[db_name]  # Thay 'mydatabase' bằng tên database của bạn
 tracking_peer_collection = db['tracking_peer']
 # Collection metainfo file
 metainfo_file_collection = db['metainfo_file']
+# Collection peer
+clients_db = db['peers']
+
+
+@app.route('/check-ip/<ip>/<int:port>', methods=['GET'])
+def check_ip(ip, port):
+    # Check if the IP and port exist in the 'peers' collection
+    client = clients_db.find_one({'ip': ip, 'port': port})
+
+    if client:
+        # If IP and port exist, return a message indicating its presence
+        return jsonify({'exists': True, 'id': str(client['_id']), 'hostname': client['hostname']})
+    else:
+        # If IP and port don't exist, add it to the database with 'id' and 'hostname'
+        # Get hostname from query params (default: 'unknown')
+        hostname = request.args.get('hostname', 'unknown')
+
+        # Insert new client document with 'id', 'ip', 'port', and 'hostname'
+        new_client = {
+            '_id': ObjectId(),  # Generate a new unique ID
+            'ip': ip,
+            'port': port,
+            'hostname': hostname
+        }
+        clients_db.insert_one(new_client)
+
+        # Return the new client info
+        return jsonify({'exists': False, 'id': str(new_client['_id']), 'hostname': hostname})
 
 
 # GET API để nhận tham số query và lưu vào tracking_peer
@@ -76,6 +103,7 @@ def track_peer():
         # Tìm tất cả các peer có info_hash tương ứng
     peers = list(tracking_peer_collection.find({"info_hash": info_hash}))
 
+    print("peer has hash info", peers)
     # Tính toán số lượng Complete và Incomplete
     complete_count = sum(1 for peer in peers if peer['left'] == 0)
     incomplete_count = sum(1 for peer in peers if peer['left'] != 0)
@@ -101,6 +129,9 @@ def track_peer():
 @app.route('/metainfo-file', methods=['POST'])
 def add_metainfo_file():
     data = request.json
+
+    print('data')
+    print(data)
 
     # Kiểm tra xem 'info' có trong request hay không
     if 'info' not in data:
