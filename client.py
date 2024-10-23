@@ -1,9 +1,15 @@
+import random
 import socket
+import requests
 from threading import Thread
+import hashlib
+import urllib.parse
+import bencodepy
+
 
 peers = []
 
-
+# Function to get the host IP address
 def get_host_default_interface_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -15,27 +21,75 @@ def get_host_default_interface_ip():
         s.close()
     return ip
 
-
 clientip = get_host_default_interface_ip()
-port = 22236
+port = random.randint(6000, 7000)
+server_ip = '127.0.0.1'  # Replace this with your server's IP
+server_port = 5000       # Replace with your server's listening port (integer)
 
 clientsocket = socket.socket()
 clientsocket.bind((clientip, port))
 clientsocket.listen(10)
+url = f"http://{server_ip}:{server_port}/metainfo-file"  # Example endpoint
+check_ip_url = f"http://{server_ip}:{server_port}/check-ip"
 
+# Function to check if IP exists in server database
+def check_ip_exists(clientip, port):
+    try:
+        response = requests.get(f"{check_ip_url}/{clientip}/{port}")
+        if response.status_code == 200:
+            return response.json().get('exists', False)
+        return False
+    except Exception as e:
+        print(f"Error occurred while checking IP: {e}")
+        return False
 
-# Hàm kết nối đến các peer khác
+# Function to send the filename to the server via HTTP POST request
+def send_filename_to_server(filelength, pieces, name, hostname=None):
+    info_data = {
+        'piecelength': 512000,
+        'filelength': filelength,
+        'pieces': pieces,
+        'name': name
+    }
+    
+    # Bencode the info dictionary
+    bencoded_info = bencodepy.encode(info_data)
+    
+    # Compute SHA1 hash
+    sha1_hash = hashlib.sha1(bencoded_info).digest()
+    
+    # URL-encode the hash and convert to hex
+    info_hash = urllib.parse.quote(sha1_hash.hex())
+    
+    data = {
+        'info': info_data,
+        'info_hash': info_hash,
+        'createBy': hostname or "Auto-Detected",
+    }
+    
+    try:
+        response = requests.post(url, json=data)
+        if response.status_code == 201:
+            print(f"File '{name}' added successfully!")
+        elif response.status_code == 409:
+            print(f"File '{name}' already exists in the database.")
+        else:
+            print(f"Failed to add file: {response.status_code} - {response.text}")
+    except Exception as e:
+        print(f"Error occurred: {e}")
+
+# Function to connect to a peer
 def connect_to_peer(ip, port, peer_id):
     try:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect((ip, port))
         print(f"Peer {peer_id} connected to {ip}:{port}")
 
-        # Gửi tin nhắn test
+        # Send a test message
         message = f"Hello from peer {peer_id}"
         client_socket.sendall(message.encode())
 
-        # Nhận phản hồi từ peer
+        # Receive response from peer
         data = client_socket.recv(1024)
         print(f"Received from {ip}:{port}: {data.decode()}")
 
@@ -45,30 +99,56 @@ def connect_to_peer(ip, port, peer_id):
         return None
 
 
+# Handle new peer connections as the server
 def new_connection(addr, conn):
-    # gửi/nhan hash_info
-    # gửi/nhan bitfield
-    print(addr)
+    print(f"New peer connected from {addr}")
+    # Handle peer communication (file transfer logic can be added here)
+    conn.sendall(b"OK")  # Respond to the peer
+    conn.close()
 
 
+# Peer-to-peer server to accept incoming connections
 def peer_server():
-
     while True:
         addr, conn = clientsocket.accept()
-        # tạo luồng xử lí giao tiếp
+        # Create a new thread to handle each peer connection
         nconn = Thread(target=new_connection, args=(addr, conn))
         nconn.start()
 
-
 if __name__ == "__main__":
-    # hostname = socket.gethostname()
-
-    print("Listening on: {}:{}".format(clientip, port))
-    # tao luong listen de cac peer khac connect
+    # Start the peer server to listen for connections
+    print(f"Listening on: {clientip}:{port}")
     Thread(target=peer_server, args=()).start()
-    # tao luong de nhan lenh tu user UI
-    Thread(target=userUI, args=()).start()
-    # lay metainfo
-    # hash_info
-    # send request --> receive peers
-    # connect to peer
+
+    # Ask the user if they want to upload or download
+    action = input("Do you want to upload or download a file? (upload/download): ").lower()
+
+    if action == "upload":
+        # If upload is selected, ask for file details
+        if not check_ip_exists(clientip, port):
+            # Only ask for the hostname if IP is not already in the database
+            hostname = input("Enter hostname: ")
+        else:
+            hostname = None
+
+        filelength = input("Enter file length: ")
+        pieces = input("Enter pieces (hash): ")
+        name = input("Enter file name: ")
+
+        # Send filename to the server
+        send_filename_to_server(filelength, pieces, name, hostname)
+
+        # Start peer-to-peer connections for uploading
+        # Example of connecting to another peer (replace with actual peer IP and port)
+        # connect_to_peer('PEER_IP', PEER_PORT, 1)
+
+    elif action == "download":
+        # If download is selected, ask for the file name to download
+        filename_to_download = input("Enter the file name you want to download: ")
+
+        # Start the download process (replace with actual logic)
+        # download_file(filename_to_download)
+        print("success download")
+
+    else:
+        print("Invalid action. Please enter 'upload' or 'download'.")
