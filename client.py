@@ -1,6 +1,7 @@
 import socket
 from threading import Thread
 
+
 peers = []
 
 
@@ -58,6 +59,7 @@ def peer_server():
         # tạo luồng xử lí giao tiếp
         nconn = Thread(target=new_connection, args=(addr, conn))
         nconn.start()
+        
 
 
 if __name__ == "__main__":
@@ -71,3 +73,4 @@ if __name__ == "__main__":
     # hash_info
     # send request --> receive peers
     # connect to peer
+   
