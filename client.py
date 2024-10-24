@@ -319,26 +319,34 @@ def start_upload_gui():
 
     Button(root, text="Select File to Upload", command=select_file).pack(pady=20)
     root.mainloop()
-
 if __name__ == "__main__":
     print(f"Listening on: {clientip}:{port}")
 
     # Start the peer server thread
     start_peer_server()
 
-    # Ask the user if they want to upload or download
-    action = input("Do you want to upload or download a file? (upload/download): ").lower()
+    while True:
+        # Ask the user if they want to upload or download
+        action = input("Do you want to upload or download a file? (upload/download) or type 'exit' to stop: ").lower()
 
-    if action == "upload":
-        start_upload_gui()
+        if action == "upload":
+            start_upload_gui()
 
-    elif action == "download":
-        info_hash = input("Enter info_hash of the file you want to download: ")
-        event = input("Enter event (started/stopped/completed): ").lower()
+        elif action == "download":
+            info_hash = input("Enter info_hash of the file you want to download: ")
+            event = input("Enter event (started/stopped/completed): ").lower()
 
-        if event in ['started', 'stopped', 'completed']:
-            download_file(info_hash, event)
+            if event in ['started', 'stopped', 'completed']:
+                download_file(info_hash, event)
+                if event == 'stopped':
+                    print("Download stopped.")
+                    continue  # Quay lại đầu vòng lặp để hỏi lại action
+            else:
+                print("Invalid event. Please enter 'started', 'stopped', or 'completed'.")
+
+        elif action == "exit":
+            print("Exiting the program.")
+            break  # Dừng vòng lặp khi người dùng chọn 'exit'
+
         else:
-            print("Invalid event. Please enter 'started', 'stopped', or 'completed'.")
-    else:
-        print("Invalid action. Please enter 'upload' or 'download'.")
+            print("Invalid action. Please enter 'upload', 'download', or 'exit'.")
