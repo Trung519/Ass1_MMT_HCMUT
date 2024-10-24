@@ -1,0 +1,186 @@
+[
+    {
+        "metainfo_file": {
+            "info": {
+                "piece_length": 524288,
+                "pieces": "0J2StFq8nNOlJcC0Kf6PmXLHNZY=",
+                "name": "2.2.doc",
+                "length": 64512
+            },
+            "createBy": "nguye"
+        },
+        "info_hash": "2c978178f2a49ec9cbf2055bd7aaf9cc37133a67",
+        "file_path": "C:/Users/nguye/Downloads/2.2.doc",
+        "uploaded": 0,
+        "downloaded": 64512,
+        "left": 0,
+        "event": "completed",
+        "pieces": [
+            {
+                "isDownloaded": true,
+                "blocks": [
+                    {
+                        "offset": 0,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 16384,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 32768,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 49152,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 65536,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 81920,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 98304,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 114688,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 131072,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 147456,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 163840,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 180224,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 196608,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 212992,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 229376,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 245760,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 262144,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 278528,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 294912,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 311296,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 327680,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 344064,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 360448,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 376832,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 393216,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 409600,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 425984,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 442368,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 458752,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 475136,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 491520,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    },
+                    {
+                        "offset": 507904,
+                        "block_size": 16384,
+                        "isDownloaded": true
+                    }
+                ]
+            }
+        ]
+    }
+]

@@ -116,6 +116,7 @@ def track_peer():
             "port": peer["port"]
         }
         for peer in peers if peer["event"] != "stopped" and peer["peer_id"] != peer_id
+        and peer['port'] != port and peer['ip'] != ip
     ]
     return jsonify({
         "Complete": complete_count,

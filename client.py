@@ -11,13 +11,7 @@ from tkinter import Tk, Label, Entry, Button, filedialog, messagebox
 from clientFE import ClientUI
 
 
-peers = []
-
 # Function to get the host IP address
-
-# Function to get the host IP address
-
-
 def get_host_default_interface_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -31,7 +25,7 @@ def get_host_default_interface_ip():
 
 
 clientip = get_host_default_interface_ip()
-port = random.randint(6000, 7000)
+port = 6881
 server_ip = '127.0.0.1'  # Replace with your server's IP
 server_port = 5000       # Replace with your server's listening port (integer)
 
@@ -178,7 +172,6 @@ def select_file():
         send_filename_to_server(filelength, pieces, name, hostname)
 
 
-
 # Function to start the GUI
 
 def start_upload_gui():
@@ -199,10 +192,10 @@ if __name__ == "__main__":
     print(f"Listening on: {clientip}:{port}")
 
     # Start the peer server in a thread
-    Thread(target=peer_server, args=()).start()
+    Thread(target=peer_server, args=(), daemon=True).start()
 
-    ClientUI().run()
-
+    clienUI = ClientUI(clientip, port)
+    clienUI.run()
     # # Ask the user if they want to upload or download
     # action = input(
     #     "Do you want to upload or download a file? (upload/download): ").lower()

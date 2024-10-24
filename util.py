@@ -1,6 +1,15 @@
+import base64
 import hashlib
 import os
 import urllib.parse
+import json
+import bencodepy
+import math
+from dotenv import load_dotenv
+
+load_dotenv()
+
+username = os.getenv('USERNAME') or 'Unknown'
 
 
 def calculate_piece_length(file_length):
@@ -31,7 +40,7 @@ def hash_file_pieces(file_path, num_piece, piece_length):
     :param num_piece: Số lượng pieces
     :return: Chuỗi các pieces (được nối lại)
     """
-    pieces = ""  # Khởi tạo chuỗi pieces
+    pieces = b""  # Khởi tạo chuỗi pieces
 
     with open(file_path, 'rb') as file:
         for i in range(num_piece):
@@ -40,6 +49,112 @@ def hash_file_pieces(file_path, num_piece, piece_length):
                 break
             # Băm dữ liệu của piece và nối vào pieces
             sha1_hash = hashlib.sha1(piece_data).digest()
-            pieces += urllib.parse.quote(sha1_hash.hex())
+            # pieces += urllib.parse.quote(sha1_hash.hex())
+            pieces += sha1_hash
+    encoded_pieces = base64.b64encode(pieces).decode('utf-8')
 
-    return pieces
+    return encoded_pieces
+
+
+# Giải mã chuỗi Base64 về byte
+def decode_pieces_base64(encoded_pieces):
+    return base64.b64decode(encoded_pieces)
+
+
+def save_download_progress(download_progress, filename='progress.json'):
+    """
+    Lưu tiến trình tải xuống vào file JSON.
+
+    :param download_progress: Danh sách các đối tượng chứa thông tin tiến trình tải xuống.
+    :param filename: Tên file để lưu dữ liệu.
+    """
+    with open(filename, 'w') as json_file:
+        json.dump(download_progress, json_file, indent=4)
+
+
+def read_download_progress(filename='progress.json'):
+    """
+    Đọc tiến trình tải xuống từ file JSON và trả về dưới dạng dictionary.
+
+    :param filename: Tên file để đọc dữ liệu.
+    :return: Danh sách các đối tượng chứa thông tin tiến trình tải xuống.
+    """
+    try:
+        with open(filename, 'r') as json_file:
+            # Đọc dữ liệu và chuyển đổi thành dictionary
+            download_progress = json.load(json_file)
+        return download_progress
+    except FileNotFoundError:
+        print(f"File '{filename}' not found.")
+        return []
+    except json.JSONDecodeError:
+        print("Error decoding JSON.")
+        return []
+
+
+def hash_info(info):
+    bencoded_info = bencodepy.encode(info)
+    # Compute SHA1 hash
+    sha1_hash = hashlib.sha1(bencoded_info).digest()
+
+    # URL-encode the hash and convert to hex
+    info_hash = urllib.parse.quote(sha1_hash.hex())
+    return info_hash
+
+
+def genMetainfoFile(file_path):
+    filelength = os.path.getsize(file_path)
+    name = os.path.basename(file_path)
+    piece_length = calculate_piece_length(filelength)
+    num_piece = math.ceil(filelength/piece_length)
+    pieces = hash_file_pieces(file_path, num_piece, piece_length)
+    body = {
+        "info": {
+            "piece_length": piece_length,
+            "pieces": pieces,
+            "name": name,
+            "length": filelength
+        },
+        "createBy": username
+    }
+    return body
+
+
+def split_piece_into_blocks(piece_length, isUpload, block_size=16*1024):
+    blocks = []
+    offset = 0
+    while offset < piece_length:
+        current_block_size = min(block_size, piece_length - offset)
+        blocks.append({
+            'offset': offset,
+            'block_size': current_block_size,
+            'isDownloaded': isUpload,
+        })
+        offset += current_block_size
+    return blocks
+
+
+def genProgress(file_path, isUpload):
+    metainfo_file = genMetainfoFile(file_path)
+    piece_length = metainfo_file['info']['piece_length']
+    num_piece = math.ceil(metainfo_file['info']['length'] / piece_length)
+    pieces = []
+    for i in range(num_piece):
+        blocks = split_piece_into_blocks(piece_length, isUpload)
+        pieces.append({
+            'isDownloaded': isUpload,
+            'blocks': blocks,
+        })
+
+    progress = {
+        "metainfo_file": metainfo_file,
+        "file_path": file_path,
+        "info_hash": hash_info(metainfo_file['info']),
+        'file_path': file_path,
+        "uploaded": 0,
+        "downloaded": metainfo_file['info']['length'],
+        "left": 0,
+        "event": "completed",
+        'pieces': pieces,
+    }
+    return progress
