@@ -6,10 +6,14 @@ import json
 import bencodepy
 import math
 from dotenv import load_dotenv
+from tkinter import messagebox
+import requests
+
 
 load_dotenv()
 
 username = os.getenv('USERNAME') or 'Unknown'
+server_url = os.getenv('SERVER_URL')
 
 
 def calculate_piece_length(file_length):
@@ -117,6 +121,8 @@ def genMetainfoFile(file_path):
         },
         "createBy": username
     }
+    info_hash = hash_info(body['info'])
+    body['info_hash'] = info_hash
     return body
 
 
@@ -158,3 +164,100 @@ def genProgress(file_path, isUpload):
         'pieces': pieces,
     }
     return progress
+
+
+def removeByPeerId(list_progress, peer_id):
+    return list(filter(lambda item: item['peer_id'] != peer_id, list_progress))
+
+
+def insert_before_extension(file_name, idx):
+    # Tìm vị trí của dấu chấm cuối cùng
+    dot_index = file_name.rfind('.')
+
+    # Nếu không tìm thấy dấu chấm, trả về chuỗi gốc
+    if dot_index == -1:
+        return file_name
+
+    # Chèn chuỗi trước phần mở rộng
+    new_file_name = file_name[:dot_index] + \
+        f"({idx})" + file_name[dot_index:]
+
+    return new_file_name
+
+
+def pause_download(progress, clientIp, clientPort, peers):
+    progress['event'] = 'stopped'
+    info_hash = progress['info_hash']
+    peer_id = progress['peer_id']
+    uploaded = progress['uploaded']
+    downloaded = progress['downloaded']
+    left = progress['left']
+    event = progress['event']
+    url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={
+        clientPort}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={clientIp}"
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            # Giả sử server trả về JSON
+            del peers[peer_id]
+
+        else:
+            messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
+            print(f"Failed to download: {
+                response.status_code} - {response.text}")
+    except Exception as e:
+        messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
+        print(f"Error during download: {e}")
+    # send request to server tracker
+
+
+def resume_download(progress, clientIp, clientPort, peers):
+    progress['event'] = 'started'
+    info_hash = progress['info_hash']
+    peer_id = progress['peer_id']
+    uploaded = progress['uploaded']
+    downloaded = progress['downloaded']
+    left = progress['left']
+    event = progress['event']
+    url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={
+        clientPort}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={clientIp}"
+
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            # Giả sử server trả về JSON
+            response_data = response.json()
+            peers[peer_id] = response_data.get('Peers', [])
+
+        else:
+            messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
+            print(f"Failed to download: {
+                response.status_code} - {response.text}")
+    except Exception as e:
+        messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
+        print(f"Error during download: {e}")
+    # send request to server tracker
+
+
+def complete_download(progress, clientIp, clientPort, peers):
+    progress['event'] = "completed"
+    info_hash = progress['info_hash']
+    peer_id = progress['peer_id']
+    uploaded = progress['uploaded']
+    downloaded = progress['downloaded']
+    left = progress['left']
+    event = progress['event']
+    url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={
+        clientPort}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={clientIp}"
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            del peers[peer_id]
+        else:
+            messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
+            print(f"Failed to download: {
+                response.status_code} - {response.text}")
+    except Exception as e:
+        messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
+        print(f"Error during download: {e}")
+    # send reqeust to server tracker

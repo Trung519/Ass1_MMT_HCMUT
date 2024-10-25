@@ -1,183 +1,186 @@
 [
     {
         "metainfo_file": {
+            "_id": "671b1158879ccd5cc5a28c63",
+            "createBy": "nguye",
             "info": {
+                "length": 338432,
+                "name": "1.2 ti\u1ec3u k\u1ebft ch\u01b0\u01a1ng 1 final.doc",
                 "piece_length": 524288,
-                "pieces": "0J2StFq8nNOlJcC0Kf6PmXLHNZY=",
-                "name": "2.2.doc",
-                "length": 64512
+                "pieces": "InUkaz3Kz53ydkUVUT/NxPAr3X4="
             },
-            "createBy": "nguye"
+            "info_hash": "6d410e17145949f15fd0100c8aea818cedb74316"
         },
-        "info_hash": "2c978178f2a49ec9cbf2055bd7aaf9cc37133a67",
-        "file_path": "C:/Users/nguye/Downloads/2.2.doc",
+        "file_path": "./repo/1.2 ti\u1ec3u k\u1ebft ch\u01b0\u01a1ng 1 final.doc.part",
+        "peer_id": "ff55946d-45ec-4d0b-86b6-2eb121a944a7",
+        "info_hash": "6d410e17145949f15fd0100c8aea818cedb74316",
         "uploaded": 0,
-        "downloaded": 64512,
-        "left": 0,
-        "event": "completed",
+        "downloaded": 0,
+        "left": 338432,
+        "event": "started",
         "pieces": [
             {
-                "isDownloaded": true,
+                "isDownloaded": false,
                 "blocks": [
                     {
                         "offset": 0,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 16384,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 32768,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 49152,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 65536,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 81920,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 98304,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 114688,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 131072,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 147456,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 163840,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 180224,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 196608,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 212992,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 229376,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 245760,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 262144,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 278528,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 294912,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 311296,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 327680,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 344064,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 360448,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 376832,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 393216,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 409600,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 425984,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 442368,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 458752,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 475136,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 491520,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     },
                     {
                         "offset": 507904,
                         "block_size": 16384,
-                        "isDownloaded": true
+                        "isDownloaded": false
                     }
                 ]
             }
