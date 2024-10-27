@@ -48,13 +48,13 @@ def check_ip(ip, port):
         # Return the new client info
         return jsonify({'exists': False, 'id': str(new_client['_id']), 'hostname': hostname})
 
-# @app.route('/get-id/<ip>', methods=['GET'])
-# def get_id(ip):
-#     client = metainfo_file_collection.find_one({"ip": ip})
-#     if client:
-#         return client['peer_id']
-#     else:
-#         return "IP is not Exist"
+@app.route('/get-id/<ip>', methods=['GET'])
+def get_id(ip):
+    client = metainfo_file_collection.find_one({"ip": ip})
+    if client:
+        return client['peer_id']
+    else:
+        return "IP is not Exist"
     
 # GET API để nhận tham số query và lưu vào tracking_peer
 @app.route('/track-peer', methods=['GET'])

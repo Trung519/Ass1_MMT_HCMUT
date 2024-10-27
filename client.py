@@ -2,6 +2,7 @@ import random
 import socket
 import struct
 import threading
+import time
 import requests
 from threading import Thread
 import hashlib
@@ -44,6 +45,7 @@ clientsocket = socket.socket()
 clientsocket.bind((clientip, port))
 clientsocket.listen(10)
 url = f"http://{server_ip}:{server_port}/metainfo-file"  # Example endpoint
+url_getID_from_IP = f"http://{server_ip}:{server_port}/get-id/{clientip}"
 
 # Function to send the filename to the server via HTTP POST request
 def send_filename_to_server(filelength, pieces, name, hostname=None):
@@ -80,6 +82,10 @@ def send_filename_to_server(filelength, pieces, name, hostname=None):
             
         #Create and push in server tracker
         peer_id = create_peer_id()
+        
+        global clienID
+        clienID = peer_id
+        
         url_tracker = f"http://{server_ip}:{server_port}/track-peer?info_hash={info_hash}&peer_id={peer_id.decode()}&port={port}&uploaded={0}&downloaded={filelength}&left={0}&event={'completed'}&ip={clientip}"
         response = requests.get(url_tracker)
         if response.status_code == 200:
@@ -91,24 +97,24 @@ def send_filename_to_server(filelength, pieces, name, hostname=None):
         print(f"Error occurred: {e}")
 
 # Function to connect to a peer
-def connect_to_peer(ip, port, peer_id):
-    try:
-        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_socket.connect((ip, port))
-        print(f"Peer {peer_id} connected to {ip}:{port}")
+# def connect_to_peer(ip, port, peer_id):
+#     try:
+#         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#         client_socket.connect((ip, port))
+#         print(f"Peer {peer_id} connected to {ip}:{port}")
 
-        # Send a test message
-        message = f"Hello from peer {peer_id}"
-        client_socket.sendall(message.encode())
+#         # Send a test message
+#         message = f"Hello from peer {peer_id}"
+#         client_socket.sendall(message.encode())
 
-        # Receive response from peer
-        data = client_socket.recv(1024)
-        print(f"Received from {ip}:{port}: {data.decode()}")
+#         # Receive response from peer
+#         data = client_socket.recv(1024)
+#         print(f"Received from {ip}:{port}: {data.decode()}")
 
-        return client_socket
-    except Exception as e:
-        print(f"Could not connect to {ip}:{port}: {e}")
-        return None
+#         return client_socket
+#     except Exception as e:
+#         print(f"Could not connect to {ip}:{port}: {e}")
+#         return None
 
 
 # Create and use 2 way handshake in TCP:
@@ -119,7 +125,18 @@ RESERVED = b'\x00' * 8  # 8 reserved bytes, all set to zero
 PEER_ID_LENGTH = 20  # Length of the peer_id and info_hash
 
 def create_peer_id():
-    return f"-PB0001-{str(uuid.uuid4())[:12]}".encode()  # Ensure it's bytes
+    response = requests.get(url_getID_from_IP)
+    temp_id = f"-PB0001-{str(uuid.uuid4())[:12]}".encode()
+    
+    if response.status_code == 200:
+        if response.text != "IP is not Exist":
+            return response.text.encode()
+        else:
+            return temp_id  # Ensure it's bytes
+    else:
+        print("Error fetching peer ID:", response.status_code)
+        return None
+            
 
 def create_handshake(info_hash, peer_id):
     # Ensure info_hash and peer_id are bytes
@@ -176,9 +193,10 @@ def send_handshake(peer_ip, peer_port, info_hash, peer_id):
         print(f"Error during handshake with peer {peer_ip}: {e}")
         return False
 
-def download_file(info_hash, event):
+# -----------------------download file 
+def get_peers(info_hash, peer_id, event):
+    """Request peer list from the tracker server."""
     global clienID
-    peer_id = create_peer_id()  # Generate a 20-byte peer_id for this client
     left = 0  # Adjust based on actual download status
     uploaded = 0
     downloaded = 0
@@ -186,27 +204,88 @@ def download_file(info_hash, event):
 
     # Request to tracker server to get the list of peers
     url = f"http://{server_ip}:{server_port}/track-peer?info_hash={info_hash}&peer_id={peer_id.decode()}&port={port}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={clientip}"
-    
     try:
         response = requests.get(url)
         if response.status_code == 200:
-            print(f"Downloaded: {response.text}")
             peers_data = response.json().get("Peers", [])
-            
-            # Start handshake with each peer
-            for peer in peers_data:
-                peer_ip = peer.get("ip")
-                peer_port = peer.get("port")
-                
-                # Initiating handshake with each peer
-                if send_handshake(peer_ip, peer_port, info_hash, peer_id):
-                    print(f"Peer {peer_ip}:{peer_port} handshake successful.")
-                    # Proceed to download logic after successful handshake
-
+            filter_peer = [peer for peer in peers_data if peer["ip"]!=clientip]
+            return filter_peer
         else:
-            print(f"Failed to download: {response.status_code} - {response.text}")
+            print(f"Failed to get peers: {response.status_code} - {response.text}")
+            return []
     except Exception as e:
-        print(f"Error during download: {e}")
+        print(f"Error requesting peers: {e}")
+        return []
+
+def connect_to_peer(peer, info_hash, peer_id):
+    """Initiate handshake and connect to peer."""
+    peer_ip = peer.get("ip")
+    peer_port = peer.get("port")
+    if send_handshake(peer_ip, peer_port, info_hash, peer_id):
+        print(f"Peer {peer_ip}:{peer_port} handshake successful.")
+        # Proceed to download logic after successful handshake
+    else:
+        print(f"Failed to handshake with {peer_ip}:{peer_port}.")
+
+def handle_peers(info_hash, peer_id, peers_data):
+    """Handle peer selection and connection."""
+    if len(peers_data) <= 5:
+        # Connect to all peers if there are 5 or fewer
+        print(f"Connecting to all {len(peers_data)} peers.")
+        for peer in peers_data:
+            connect_to_peer(peer, info_hash, peer_id)
+    else:
+        # Sort peers by port in descending order and select the top 4
+        sorted_peers = sorted(peers_data, key=lambda p: p["port"], reverse=True)
+        top_4_peers = sorted_peers[:4]
+
+        # Connect to top 4 peers
+        print(f"Connecting to top 4 peers by port.")
+        for peer in top_4_peers:
+            connect_to_peer(peer, info_hash, peer_id)
+
+        # Randomly select 1 more peer (not in top 4) every 30 seconds
+        remaining_peers = sorted_peers[4:]
+        def random_connect():
+            while True:
+                random_peer = random.choice(remaining_peers)
+                print(f"Randomly selected peer {random_peer['ip']}:{random_peer['port']} for connection.")
+                connect_to_peer(random_peer, info_hash, peer_id)
+                time.sleep(30)
+
+        # Start the random peer connection in a separate thread
+        threading.Thread(target=random_connect, daemon=True).start()
+
+def download_file(info_hash, event):
+    global clienID
+    peer_id = create_peer_id()  # Generate a 20-byte peer_id for this client
+    clienID = peer_id
+
+    # Get initial peers
+    peers_data = get_peers(info_hash, peer_id, event)
+    handle_peers(info_hash, peer_id, peers_data)
+
+    # Re-fetch peers every 10 seconds and connect
+    def recheck_peers():
+        a=3
+        b=2
+        while b<a:
+            time.sleep(10)
+            print("Rechecking peers from the server.")
+            peers_data = get_peers(info_hash, peer_id, event)
+            if len(peers_data) <= 5:
+                print(f"Reconnecting to all {len(peers_data)} peers.")
+                for peer in peers_data:
+                    connect_to_peer(peer, info_hash, peer_id)
+            else:
+                # Handle the top 4 peer connection logic
+                handle_peers(info_hash, peer_id, peers_data)
+            b=b+1
+
+    # Start the recheck process in a separate thread
+    threading.Thread(target=recheck_peers, daemon=True).start()
+
+#----------------------------------- end 
 
 # Handle new peer connections as the server
 
@@ -230,8 +309,6 @@ def parse_handshake(handshake_message):
 
 #function to get new connect with IP need to change data
 def new_connection(addr, conn):
-    print(f"Waiting for handshake from peer at {addr}...")
-
     # First, try to receive the full 68-byte handshake
     handshake_length = 68
     response = b''
@@ -242,8 +319,6 @@ def new_connection(addr, conn):
             return
         response += chunk
 
-    print(f"Received raw bytes from peer {addr}: {response}")
-
     if len(response) != handshake_length:  # Handshake should be 68 bytes
         print(f"Invalid handshake length: {len(response)}")
         conn.close()
@@ -253,18 +328,8 @@ def new_connection(addr, conn):
         # Parse the handshake from the peer
         pslen, pstr, reserved, received_info_hash_byte, received_peer_id = parse_handshake(response)
         if pstr == PSTR:
-            print("Valid BitTorrent protocol handshake received.")
-            print(f"Received info_hash: {received_info_hash_byte}")
-            print(f"Received peer_id: {received_peer_id}")
 
-            # Use the received info_hash for further communication
-            # Send back a handshake using the same info_hash
-            # my_peer_data = requests.get(f"http://{server_ip}:{server_port}/get-id/{clientip}")
-            # my_peer_ip = my_peer_data.text
-            # print("============", my_peer_data)
             received_info_hash = bytes.fromhex(received_info_hash_byte)
-            # handshake_message = create_handshake(received_info_hash,my_peer_ip.encode('utf-8'))
-            print("================", clienID)
             handshake_message = create_handshake(received_info_hash,clienID)
             conn.sendall(handshake_message)
             print(f"Sent handshake back to {addr} with info_hash: {received_info_hash}")
@@ -282,6 +347,7 @@ def peer_server():
     while not stop_event.is_set():  # Kiểm tra stop_event để dừng server
         try:
             conn, addr = clientsocket.accept()
+            print("===========================", conn)
             nconn = threading.Thread(target=new_connection, args=(addr, conn))
             nconn.start()
         except Exception as e:
