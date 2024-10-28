@@ -8,6 +8,8 @@ import math
 from dotenv import load_dotenv
 from tkinter import messagebox
 import requests
+import random
+from message_type import EMesage_Type
 
 
 load_dotenv()
@@ -78,7 +80,7 @@ def save_download_progress(download_progress, filename='progress.json'):
 
 def read_download_progress(filename='progress.json'):
     """
-    Đọc tiến trình tải xuống từ file JSON và trả về dưới dạng dictionary.
+Đọc tiến trình tải xuống từ file JSON và trả về dưới dạng dictionary.
 
     :param filename: Tên file để đọc dữ liệu.
     :return: Danh sách các đối tượng chứa thông tin tiến trình tải xuống.
@@ -148,6 +150,7 @@ def genProgress(file_path, isUpload):
     for i in range(num_piece):
         blocks = split_piece_into_blocks(piece_length, isUpload)
         pieces.append({
+            'piece_index': i,
             'isDownloaded': isUpload,
             'blocks': blocks,
         })
@@ -185,79 +188,147 @@ def insert_before_extension(file_name, idx):
     return new_file_name
 
 
-def pause_download(progress, clientIp, clientPort, peers):
-    progress['event'] = 'stopped'
-    info_hash = progress['info_hash']
-    peer_id = progress['peer_id']
-    uploaded = progress['uploaded']
-    downloaded = progress['downloaded']
-    left = progress['left']
-    event = progress['event']
-    url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={
-        clientPort}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={clientIp}"
-    try:
-        response = requests.get(url)
-        if response.status_code == 200:
-            # Giả sử server trả về JSON
-            del peers[peer_id]
-
-        else:
-            messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
-            print(f"Failed to download: {
-                response.status_code} - {response.text}")
-    except Exception as e:
-        messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
-        print(f"Error during download: {e}")
-    # send request to server tracker
+def gen_set_connecting_peer(set_peer):
+    if len(set_peer) <= 5:
+        return set_peer
+    result = set_peer[:4]
+    random_peer = random.randint(4, len(set_peer))
+    result.append(set_peer[random_peer])
 
 
-def resume_download(progress, clientIp, clientPort, peers):
-    progress['event'] = 'started'
-    info_hash = progress['info_hash']
-    peer_id = progress['peer_id']
-    uploaded = progress['uploaded']
-    downloaded = progress['downloaded']
-    left = progress['left']
-    event = progress['event']
-    url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={
-        clientPort}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={clientIp}"
-
-    try:
-        response = requests.get(url)
-        if response.status_code == 200:
-            # Giả sử server trả về JSON
-            response_data = response.json()
-            peers[peer_id] = response_data.get('Peers', [])
-
-        else:
-            messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
-            print(f"Failed to download: {
-                response.status_code} - {response.text}")
-    except Exception as e:
-        messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
-        print(f"Error during download: {e}")
-    # send request to server tracker
+def gen_set_peer(peers):
+    # print('gen set peer --------------')
+    seen_ip_port = set()
+    unique_peers = []
+    for item in peers.items():
+        list_peer = item[1]
+        for peer in list_peer:
+            # peer = {ip, port, peer_id, speed }
+            ip_port = (peer["ip"], peer["port"])
+            if ip_port not in seen_ip_port:
+                peer['isConnected'] = False
+                unique_peers.append(peer)
+                seen_ip_port.add(ip_port)
+    # print(unique_peers, 'unique_peers')
+    # print('-------------')
+    unique_peers.sort(key=lambda x: x['speed'], reverse=True)
+    return unique_peers
 
 
-def complete_download(progress, clientIp, clientPort, peers):
-    progress['event'] = "completed"
-    info_hash = progress['info_hash']
-    peer_id = progress['peer_id']
-    uploaded = progress['uploaded']
-    downloaded = progress['downloaded']
-    left = progress['left']
-    event = progress['event']
-    url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={
-        clientPort}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={clientIp}"
-    try:
-        response = requests.get(url)
-        if response.status_code == 200:
-            del peers[peer_id]
-        else:
-            messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
-            print(f"Failed to download: {
-                response.status_code} - {response.text}")
-    except Exception as e:
-        messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
-        print(f"Error during download: {e}")
-    # send reqeust to server tracker
+def convert_message_dict_to_byte(message):
+    message_json = json.dumps(message)
+    return message_json.encode('utf-8')
+
+
+def handle_message_client(conn, message_dict, connecting_peers, status, list_progress):
+    if message_dict['type'] == EMesage_Type.HANDSHAKE.value:
+        handle_message_request_handshake(
+            conn, message_dict, connecting_peers, status, list_progress)
+    elif message_dict['type'] == EMesage_Type.BLOCK.value:
+        handle_message_request_block(conn, message_dict)
+    else:
+        print('type message khong xac dinh')
+        conn.close()
+
+
+def handle_message_request_handshake(conn, message_dict, connecting_peers, status, list_progress):
+    '''
+    message_dict = {
+        type: 'HANDSHAKE'
+        dowloading_file = [
+            {
+                info_hash :string,
+                peer_id: string,
+            }
+        ]
+    }
+    connectiong_peers = [
+        {
+            ip: string,
+            port: string,
+            peer_id: string,
+            speed: number,
+            isConnected: boolean
+        }
+    ]
+    '''
+    downloading_files = message_dict['downloading_file']
+    if is_allow_connect(downloading_files, connecting_peers):
+        list_progess = list_progress
+        list_downloading_info_hash = [item['info_hash']
+                                      for item in downloading_files]
+        pieces_info = []
+        for progress in list_progess:
+            if progress['info_hash'] in list_downloading_info_hash:
+                pieces_info += [{
+                    "info_hash": progress['info_hash'],
+                    'peer_id': progress['peer_id'],
+                    'piece_index': item['piece_index']
+                } for item in progress['pieces']
+                    if item['isDownloaded']]
+        message_response_handshake = {
+            "type": EMesage_Type.HANDSHAKE.value,
+            'pieces_info': pieces_info
+        }
+        message_response_handshake_byte = convert_message_dict_to_byte(
+            message_response_handshake)
+        conn.sendall(message_response_handshake_byte)
+        status['isAccept'] = True
+    else:
+        message_reject = {
+            "type": EMesage_Type.REJECT.value,
+            "message": 'chặn kết nối'
+        }
+        message_reject_byte = convert_message_dict_to_byte(message_reject)
+        conn.sendall(message_reject_byte)
+        status['isAccept'] = False
+        conn.close()
+
+
+def is_allow_connect(downloading_files, connecting_peers):
+    connecting_peer_ids = [item['peer_id'] for item in connecting_peers]
+    list_exist = [
+        item for item in downloading_files if item['peer_id'] in connecting_peer_ids]
+    return len(list_exist) != 0
+
+
+def handle_message_request_block(conn, message_dict):
+    pass
+
+
+def handle_message_server(client_socket, message_dict, peer, list_progress):
+    if message_dict['type'] == EMesage_Type.HANDSHAKE.value:
+        handle_message_reponse_handshake(
+            client_socket, message_dict, list_progress)
+    elif message_dict['type'] == EMesage_Type.REJECT.value:
+        handle_message_response_reject(client_socket, message_dict, peer)
+
+
+def handle_message_reponse_handshake(client_socket, message_dict, list_progress):
+    '''
+    message_dict = {
+        type: 'HANDSHAKE',
+        pieces_info: [
+            {
+                info_hash : string,
+                peer_id : string,
+                piece_index: number
+            }
+        ]
+    }
+    '''
+    pieces_info = message_dict['pieces_info']
+    for piece_info in pieces_info:
+        piece_index_is_downloaded = piece_info['piece_index']
+        peer_id_server = piece_info['peer_id']
+        info_hash = piece_info['info_hash']
+        for progress in list_progress:
+            if progress['info_hash'] == piece_info['info_hash']:
+                list_pieces_need_to_download = [{"piece_id_client": progress['peer_id'], "peer_id_server": peer_id_server, 'info_hash': info_hash,
+                                                 'piece_index':  piece_index_is_downloaded} for piece in progress['pieces'] if not piece[piece_index_is_downloaded]]
+    print('MESSAGE_SERVER_RESPONSE_HANDSHAKE', message_dict)
+
+
+def handle_message_response_reject(client_socket, message_dict, peer):
+    peer['isConnected'] = False
+    client_socket.close()

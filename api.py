@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 import os
 import requests
+from tkinter import messagebox
 
 load_dotenv()
 
@@ -16,6 +17,8 @@ def add_metainfo_file(body):
             # Sử dụng cú pháp từ điển
             print(f"File '{body['info']['name']}' added successfully!")
         elif response.status_code == 409:
+            messagebox.showerror(
+                "Lỗi thao tác", "File đã tồn tại trên hệ thống")
             print(f"File '{body['info']['name']
                            }' already exists in the database.")
         else:

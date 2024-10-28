@@ -81,17 +81,14 @@ def track_peer():
         "ip": ip
     }
 
+    if (event == 'stopped'):
+        # Nếu event là 'stopped', xóa peer khỏi collection
+        tracking_peer_collection.delete_one({"peer_id": peer_id})
     if existing_peer:
-
-        if (event == 'stopped'):
-            # Nếu event là 'stopped', xóa peer khỏi collection
-            tracking_peer_collection.delete_one({"peer_id": peer_id})
-        else:
-            # Nếu peer_id đã tồn tại, cập nhật các thông tin khác
-            tracking_peer_collection.update_one(
-                {"peer_id": peer_id},
-                {"$set": peer_data}
-            )
+        tracking_peer_collection.update_one(
+            {"peer_id": peer_id},
+            {"$set": peer_data}
+        )
 
     else:
         # Nếu peer_id chưa tồn tại, thêm dữ liệu mới vào MongoDB
@@ -101,7 +98,8 @@ def track_peer():
         return jsonify({"error": "Missing 'info_hash' query parameter"}), 400
 
         # Tìm tất cả các peer có info_hash tương ứng
-    peers = list(tracking_peer_collection.find({"info_hash": info_hash}))
+    peers = list(tracking_peer_collection.find(
+        {"info_hash": info_hash}).sort("uploaded", -1))
 
     print("peer has hash info", peers)
     # Tính toán số lượng Complete và Incomplete
@@ -113,10 +111,11 @@ def track_peer():
         {
             "peer_id": peer["peer_id"],
             "ip": peer["ip"],
-            "port": peer["port"]
+            "port": peer["port"],
+            "speed": 0
         }
         for peer in peers if peer["event"] != "stopped" and peer["peer_id"] != peer_id
-        and peer['port'] != port and peer['ip'] != ip
+        and peer['port'] != port
     ]
     return jsonify({
         "Complete": complete_count,

@@ -1,7 +1,8 @@
 import random
 import socket
 import requests
-from threading import Thread
+from threading import Thread, Lock
+import threading
 import hashlib
 import urllib.parse
 import bencodepy
@@ -9,9 +10,62 @@ import uuid
 import os
 from tkinter import Tk, Label, Entry, Button, filedialog, messagebox
 from clientFE import ClientUI
+import time
+from util import server_url, gen_set_connecting_peer, gen_set_peer, handle_message_client, convert_message_dict_to_byte, handle_message_server
+import json
+from message_type import EMesage_Type
+
+lock = Lock()
+stop_event = threading.Event()
+
+message_request_block_queue = {}
+
+
+def add_message_request_queue(info_hash, queue):
+    pass
+
+
+# # chọn 5 peer
+def select_peer_per_ten_second():
+    while True:
+        clientUi.set_peers = gen_set_peer(clientUi.peers)
+        clientUi.connecting_peers = gen_set_connecting_peer(clientUi.set_peers)
+        time.sleep(10)
+
+
+# refresh peers
+def refresh_peers_per_30_second():
+    while True:
+        for progress in clientUi.list_progress:
+            event = progress['event']
+            if event == 'started':
+                peer_id = progress['peer_id']
+                left = progress['left']
+                uploaded = progress['uploaded']
+                downloaded = progress['downloaded']
+                info_hash = progress['info_hash']
+                url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={
+                    port}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={clientip}"
+                # try:
+                response = requests.get(url)
+                if response.status_code == 200:
+                    response_data = response.json()
+                    clientUi.peers[peer_id] = response_data.get(
+                        'Peers', [])
+                    clientUi.set_peers = gen_set_peer(clientUi.peers)
+                    clientUi.connecting_peers = gen_set_connecting_peer(
+                        clientUi.set_peers)
+                # except Exception as e:
+                #     messagebox.showerror(
+                #         "Lỗi hệ thông", 'Lỗi khi refresh peer')
+                #     print(f"Failed to download: {
+                #         response.status_code} - {response.text}")
+        time.sleep(30)
 
 
 # Function to get the host IP address
+
+
 def get_host_default_interface_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -25,13 +79,12 @@ def get_host_default_interface_ip():
 
 
 clientip = get_host_default_interface_ip()
-port = 6881
+port = random.randint(6000, 7000)
 server_ip = '127.0.0.1'  # Replace with your server's IP
 server_port = 5000       # Replace with your server's listening port (integer)
+clientUi = ClientUI(clientip, port)
 
-clientsocket = socket.socket()
-clientsocket.bind((clientip, port))
-clientsocket.listen(10)
+
 url = f"http://{server_ip}:{server_port}/metainfo-file"  # Example endpoint
 check_ip_url = f"http://{server_ip}:{server_port}/check-ip"
 
@@ -87,25 +140,6 @@ def send_filename_to_server(filelength, pieces, name, hostname=None):
 # Function to connect to a peer
 
 
-def connect_to_peer(ip, port, peer_id):
-    try:
-        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_socket.connect((ip, port))
-        print(f"Peer {peer_id} connected to {ip}:{port}")
-
-        # Send a test message
-        message = f"Hello from peer {peer_id}"
-        client_socket.sendall(message.encode())
-
-        # Receive response from peer
-        data = client_socket.recv(1024)
-        print(f"Received from {ip}:{port}: {data.decode()}")
-
-        return client_socket
-    except Exception as e:
-        print(f"Could not connect to {ip}:{port}: {e}")
-        return None
-
 # Function to download file using P2P
 
 
@@ -128,74 +162,126 @@ def download_file(info_hash, event):
     except Exception as e:
         print(f"Error during download: {e}")
 
+
+def connect_to_peer(peer):
+    try:
+        print('-------------------')
+        print('connect to this', peer)
+        print('-------------------')
+
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        client_socket.connect((peer['ip'], peer['port']))
+
+        peer['isConnected'] = True
+
+        message_handshake = clientUi.message_handshake
+        while peer['isConnected']:
+            # send mesage handshake
+            if message_handshake['downloading_file'] != []:
+                message_handshake_byte = convert_message_dict_to_byte(
+                    message_handshake)
+                client_socket.sendall(message_handshake_byte)
+                message_handshake = []
+
+            # send message request block
+
+            data = client_socket.recv(1024)
+            message_dict = json.loads(data.decode('utf-8'))
+            handle_message_server(
+                client_socket, message_dict, peer, clientUi.list_progress)
+        # clone message_queue
+        # các thread khác cũng phải gửi các message này
+        # Send a test message
+        # message = f"Hello from peer {peer_id}"
+        # client_socket.sendall(message.encode())
+
+        # gửi pieces_info chưa tải xong và hash_info
+
+        # Receive response from peer
+
+        return client_socket
+    except Exception as e:
+        peer['isConnected'] = False
+        print(f"Could not connect to {peer['ip']}:{peer['port']}: {e}")
+        return None
+
 # Handle new peer connections as the server
 
 
 def new_connection(addr, conn):
-    print(f"New peer connected from {addr}")
+    print(f"Listen to this {addr}")
+    status = {'isAccept': True}
+    while status['isAccept']:
+        try:
+            data = conn.recv(1024)
+            if data != b'':
+                message_dict = json.loads(data.decode('utf-8'))
+                handle_message_client(conn, message_dict,
+                                      clientUi.connecting_peers, status, clientUi.list_progress)
+        except Exception as e:
+            message_reject = {
+                'type': EMesage_Type.REJECT.value,
+                'message': "Lỗi kết nối"
+            }
+            message_reject_byte = convert_message_dict_to_byte(message_reject)
+            conn.sendall(message_reject_byte)
+            status['isAccept'] = False
+            conn.close()
 
-    # Generate server's info_hash and peer_id for demonstration
-    server_info_hash = "server_info_hash"
-    server_peer_id = "server_peer_id"
-
-    # Send the server's info_hash and peer_id
-    conn.sendall(f"{server_info_hash},{server_peer_id}".encode())
-
-    # Receive client response
-    response = conn.recv(1024).decode()
-    print(f"Received from peer {addr}: {response}")
-
-    conn.close()
-
-# Peer-to-peer server to accept incoming connections
+    # Peer-to-peer server to accept incoming connections
 
 
-def peer_server():
+def server_process():
+    clientsocket = socket.socket()
+    clientsocket.bind((clientip, port))
+    clientsocket.listen(5)
+
     while True:
-        addr, conn = clientsocket.accept()
+
+        conn, addr = clientsocket.accept()
+        # if not is_allowed_connection(ip_address, port_number):
+        #     print(f"Kết nối từ {addr} bị từ chối.")
+        #     conn.close()  # Đóng kết nối nếu IP và port không được phép
+        #     continue
+        # make thead to handle new connection
+
         nconn = Thread(target=new_connection, args=(addr, conn))
         nconn.start()
 
 
-def select_file():
-    file_path = filedialog.askopenfilename()
-    if file_path:
-        filelength = os.path.getsize(file_path)
-        name = os.path.basename(file_path)
+def client_process():
+    # Create "threadnum" of Thread to parallelly connnect
+    while True:
+        # print('==================')
+        # print(clientUi.connection_peers, 'connectiong peers')
+        # print('==================')
 
-        with open(file_path, 'rb') as f:
-            file_data = f.read()
-            # Simple hash example
-            pieces = hashlib.sha256(file_data).hexdigest()
+        # Đặt stop_event cho luồng dừng lại sau 10 giây
+        stop_event.clear()
+        threads = [Thread(target=connect_to_peer, args=(peer,))
+                   for peer in clientUi.connecting_peers if not peer['isConnected']]
 
-        hostname = hostname_entry.get()
-        send_filename_to_server(filelength, pieces, name, hostname)
+        # Bắt đầu các luồng
+        [t.start() for t in threads]
 
+        # Chờ 10 giây và sau đó đặt Event để dừng luồng nếu chưa hoàn tất
+        time.sleep(10)
+        stop_event.set()  # Đặt Event, cho phép tất cả các luồng kiểm tra và thoát nếu cần
 
-# Function to start the GUI
-
-def start_upload_gui():
-    global hostname_entry
-    root = Tk()
-    root.title("File Uploader")
-
-    Label(root, text="Enter Hostname:").pack(pady=5)
-    hostname_entry = Entry(root)
-    hostname_entry.pack(pady=5)
-
-    Button(root, text="Select File to Upload",
-           command=select_file).pack(pady=20)
-    root.mainloop()
+        # Chờ các luồng kết thúc
+        [t.join() for t in threads]
 
 
 if __name__ == "__main__":
     print(f"Listening on: {clientip}:{port}")
 
     # Start the peer server in a thread
-    Thread(target=peer_server, args=(), daemon=True).start()
-
-    clienUI = ClientUI(clientip, port)
-    clienUI.run()
+    Thread(target=server_process, args=(), daemon=True).start()
+    Thread(target=client_process, args=(), daemon=True).start()
+    Thread(target=select_peer_per_ten_second, args=(), daemon=True).start()
+    Thread(target=refresh_peers_per_30_second, args=(), daemon=True).start()
+    clientUi.run()
     # # Ask the user if they want to upload or download
     # action = input(
     #     "Do you want to upload or download a file? (upload/download): ").lower()

@@ -7,19 +7,25 @@ from api import *
 import urllib.parse
 import bencodepy
 import uuid
-
 import math
+from message_type import EMesage_Type
 
 
 class ClientUI:
     def __init__(self, ip, port):
         self.ip = ip
         self.peers = {}
+        self.set_peers = []
+        self.connecting_peers = []
         self.port = port
         self.root = Tk()
         self.root.geometry('800x600')
         self.root.title('BTL Mạng Máy Tính')
         self.list_progress = read_download_progress()
+        self.message_handshake = {
+            "type": EMesage_Type.HANDSHAKE.value,
+            "downloading_file": []
+        }
 
         # Tạo frame đầu trang
         self.head_frame = Frame(self.root, bg='#158aff',
@@ -46,6 +52,7 @@ class ClientUI:
 
 
 # Hàm để chuyển đổi menu
+
 
     def toggle_menu(self):
         def collapse_toggle_menu():
@@ -82,7 +89,6 @@ class ClientUI:
     # Hàm hiển thị nội dung MetaInfo File
 
     def show_metainfo_content(self):
-
         self.stop_update_progress()
         # Xóa nội dung cũ
         list_metainfo = get_all_metainfo_file()
@@ -117,12 +123,29 @@ class ClientUI:
 
     def download_metainfo(self, metainfo):
         peer_id = str(uuid.uuid4())
+
         info_hash = metainfo['info_hash']
-        count_info_hash = sum(
-            1 for item in self.list_progress if item['info_hash'] == info_hash)
-        if count_info_hash != 0:
-            metainfo['info']['name'] = insert_before_extension(
-                metainfo['info']['name'], count_info_hash)
+        name_file_download = metainfo['info']['name']
+        isSameName = True
+        idxfile = 1
+
+        while isSameName:
+            isSameName = False  # Đặt lại isSameName để kiểm tra cho mỗi lần lặp mới
+            i = 0
+            while i < len(self.list_progress):
+                item = self.list_progress[i]
+                file_name_progress = item['metainfo_file']['info']['name']
+
+                if file_name_progress == name_file_download:
+                    name_file_download = insert_before_extension(
+                        name_file_download, idxfile)
+                    idxfile += 1
+                    isSameName = True  # Đánh dấu phát hiện tên trùng
+                    break  # Thoát vòng lặp để thử lại với tên file mới
+                i += 1
+
+        metainfo['info']['name'] = name_file_download
+
         left = metainfo['info']['length']
         uploaded = 0
         downloaded = 0
@@ -141,6 +164,10 @@ class ClientUI:
             # Giả sử server trả về JSON
                 response_data = response.json()  # Chuyển đổi thành đối tượng Python
                 self.peers[peer_id] = response_data.get('Peers', [])
+
+                # push downloadding_file to message_handshake
+                self.message_handshake['downloading_file'].append(
+                    {'info_hash': info_hash, 'peer_id': peer_id})
             else:
                 messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
                 print(f"Failed to download: {
@@ -152,6 +179,7 @@ class ClientUI:
         for i in range(num_piece):
             blocks = split_piece_into_blocks(piece_length, False)
             pieces.append({
+                'piece_index': i,
                 'isDownloaded': False,
                 "blocks": blocks,
             })
@@ -172,6 +200,10 @@ class ClientUI:
         # Hàm hiển thị nội dung Downloads
 
     def show_download_content(self):
+        # print(self.set_peers, 'set peers')
+        # print(self.connecting_peers, 'connecting peer')
+        # print(self.peers, 'peers')
+        # print('message handshake', self.message_handshake)
         self.update_progress = self.content_frame.after(
             1000, self.show_download_content)
         # Xóa nội dung cũ
@@ -182,7 +214,9 @@ class ClientUI:
         label = Label(self.content_frame, text="Downloads Content",
                       font=("Arial", 18), bg="white")
         label.place(relx=0.5)
+
         for idx, progress in enumerate(self.list_progress, start=1):
+
             downloaded = progress['downloaded']
             file_length = progress['metainfo_file']['info']['length']
             event = progress['event']
@@ -200,12 +234,12 @@ class ClientUI:
             # Thêm nút dựa trên trạng thái event
             if event == "started":
                 button = Button(
-                    progress_frame, text="Pause", command=lambda progress=progress: pause_download(progress, self.ip, self.port, self.peers))
+                    progress_frame, text="Pause", command=lambda progress=progress: self.pause_download(progress))
                 button.pack(side=RIGHT, padx=10)
 
             elif event == "stopped":
                 button = Button(
-                    progress_frame, text="Resume", command=lambda progress=progress: resume_download(progress, self.ip, self.port, self.peers))
+                    progress_frame, text="Resume", command=lambda progress=progress: self.resume_download(progress))
                 button.pack(side=RIGHT, padx=10)
             else:
                 finish_label = Label(progress_frame, text='Chia sẽ', font=(
@@ -225,28 +259,115 @@ class ClientUI:
         url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={
             self.port}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={self.ip}"
 
-        if progress['event'] == 'stopped':
+        # try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            # xoa peers tham gia tai file nay
+            if progress['event'] == 'started' or progress['event'] == 'completed':
+                del self.peers[peer_id]
             # xoa tien trinh
-            self.list_progress = removeByPeerId(
-                self.list_progress, progress['peer_id'])
+            self.list_progress = [
+                item for item in self.list_progress if not (item['info_hash'] == info_hash and item['peer_id'] == peer_id)]
+            self.message_handshake['downloading_file'] = [message for message in self.message_handshake['downloading_file'] if not (
+                message['info_hash'] == info_hash and message['peer_id'] == peer_id)]
+
+        else:
+            messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
+            print(f"Failed to download: {
+                response.status_code} - {response.text}")
+        # except Exception as e:
+        #     messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
+        #     print(f"Error during download: {e}")
+        # delete partial file if exist
+
+        # Hàm hiển thị nội dung Upload
+
+    def pause_download(self, progress):
+        progress['event'] = 'stopped'
+        info_hash = progress['info_hash']
+        peer_id = progress['peer_id']
+        uploaded = progress['uploaded']
+        downloaded = progress['downloaded']
+        left = progress['left']
+        event = progress['event']
+        url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={
+            self.port}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={self.ip}"
+        # try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            # Giả sử server trả về JSON
+            del self.peers[peer_id]
+            self.message_handshake['downloading_file'] = [message for message in self.message_handshake['downloading_file'] if not (
+                message['info_hash'] == info_hash and message['peer_id'] == peer_id)]
+
         else:
             try:
-                response = requests.get(url)
-                if response.status_code == 200:
-                    # xoa peers tham gia tai file nay
-                    del self.peers[peer_id]
-                    # xoa tien trinh
-                    self.list_progress = removeByPeerId(
-                        self.list_progress, progress['peer_id'])
-
-                else:
-                    messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
-                    print(f"Failed to download: {
-                        response.status_code} - {response.text}")
+                messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
+                print(f"Failed to download: {
+                    response.status_code} - {response.text}")
             except Exception as e:
+                print(e)
                 messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
                 print(f"Error during download: {e}")
-        # Hàm hiển thị nội dung Upload
+            # send request to server tracker
+
+    def resume_download(self, progress):
+        progress['event'] = 'started'
+        info_hash = progress['info_hash']
+        peer_id = progress['peer_id']
+        uploaded = progress['uploaded']
+        downloaded = progress['downloaded']
+        left = progress['left']
+        event = progress['event']
+        url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={
+            self.port}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={self.ip}"
+
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                # Giả sử server trả về JSON
+                response_data = response.json()
+                self.peers[peer_id] = response_data.get('Peers', [])
+                self.message_handshake['downloading_file'].append(
+                    {'info_hash': info_hash, 'peer_id': peer_id})
+
+            else:
+                messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
+                print(f"Failed to download: {
+                    response.status_code} - {response.text}")
+        except Exception as e:
+            messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
+            print(f"Error during download: {e}")
+        # send request to server tracker
+
+    def complete_download(self, progress):
+        progress['event'] = "completed"
+        info_hash = progress['info_hash']
+        peer_id = progress['peer_id']
+        uploaded = progress['uploaded']
+        downloaded = progress['downloaded']
+        left = progress['left']
+        event = progress['event']
+        url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={
+            self.port}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={self.ip}"
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                del self.peers[peer_id]
+                self.message_handshake['downloading_file'] = []
+            else:
+                messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
+                print(f"Failed to download: {
+                    response.status_code} - {response.text}")
+        except Exception as e:
+            messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
+            print(f"Error during download: {e}")
+    # send reqeust to server tracker
+
+    def pause_all_progress(self, list_progress):
+        for progress in list_progress:
+            if progress['event'] == 'started' or progress['event'] == 'completed':
+                self. pause_download(progress)
 
     def show_upload_content(self):
         self.stop_update_progress()
@@ -270,13 +391,39 @@ class ClientUI:
             body = genMetainfoFile(file_path)
             progress = genProgress(file_path, True)
             progress['peer_id'] = peer_id
+            info_hash = body['info_hash']
+            uploaded = progress['uploaded']
+            downloaded = progress['downloaded']
+            left = progress['left']
+            event = progress['event']
+            # server track file peer upload
+            url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={
+                self.port}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={self.ip}"
 
-            add_metainfo_file(body)
-            self.list_progress = [progress] + self.list_progress
+            try:
+                response = requests.get(url)
+                if response.status_code == 200:
+                    response_data = response.json()
+                    # luu peers
+                    self.peers[peer_id] = response_data.get("Peers", [])
+                    # luu mata info
+                    add_metainfo_file(body)
+                    # luu progress
+                    self.list_progress = [progress] + self.list_progress
+                else:
+                    messagebox.showerror(
+                        "Lỗi hệ thông", 'Lỗi trong quá trình upload file')
+                    print(f"Failed to download: {
+                        response.status_code} - {response.text}")
+            except Exception as e:
+                messagebox.showerror(
+                    "Lỗi hệ thông", 'Lỗi trong quá trình upload file')
+                print(f"Error during download: {e}")
 
     def on_closing(self):
         # Hiển thị hộp thoại xác nhận
         if messagebox.askokcancel("Thoát", "Bạn có chắc chắn muốn thoát chương trình?"):
+            self.pause_all_progress(self.list_progress)
             save_download_progress(self.list_progress)
             # self.root.destroy()  # Đóng cửa sổ và thoát chương trình
             sys.exit()  # Exit chương trình

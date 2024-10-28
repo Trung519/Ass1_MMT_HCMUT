@@ -1,26 +1,27 @@
 [
     {
         "metainfo_file": {
-            "_id": "671b1158879ccd5cc5a28c63",
+            "_id": "671ef1e7d68ac6f06f1fe0fd",
             "createBy": "nguye",
             "info": {
-                "length": 338432,
+                "length": 357376,
                 "name": "1.2 ti\u1ec3u k\u1ebft ch\u01b0\u01a1ng 1 final.doc",
                 "piece_length": 524288,
-                "pieces": "InUkaz3Kz53ydkUVUT/NxPAr3X4="
+                "pieces": "yKQYL0OY07dy2vXy6mbj5ksD3IM="
             },
-            "info_hash": "6d410e17145949f15fd0100c8aea818cedb74316"
+            "info_hash": "91c884ebc76236931da12d041153b30cad23f7d1"
         },
         "file_path": "./repo/1.2 ti\u1ec3u k\u1ebft ch\u01b0\u01a1ng 1 final.doc.part",
-        "peer_id": "ff55946d-45ec-4d0b-86b6-2eb121a944a7",
-        "info_hash": "6d410e17145949f15fd0100c8aea818cedb74316",
+        "peer_id": "4da2607a-be34-4ab8-b806-7550b2996759",
+        "info_hash": "91c884ebc76236931da12d041153b30cad23f7d1",
         "uploaded": 0,
         "downloaded": 0,
-        "left": 338432,
-        "event": "started",
+        "left": 357376,
+        "event": "stopped",
         "pieces": [
             {
-                "isDownloaded": false,
+                "piece_index": 0,
+                "isDownloaded": true,
                 "blocks": [
                     {
                         "offset": 0,
