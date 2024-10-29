@@ -1,5 +1,7 @@
 message_request_handshake = {
   type: "HANDSHAKE",
+  ip: string
+  port: number
   DOWNLOADING_FILE = [
     {
       "info_hash": string,
@@ -44,6 +46,30 @@ message_response_block = {
   block_size: number
   type: "BLOCK",
 }
+
+peers = [
+  {
+    peer_id: string,
+    info_hash: string,
+    ip: string,
+    port: number,
+    speed: number
+  }
+]
+
+set_peers = [
+  {
+    ip: string,
+    port: string,
+    speed: string,
+    isConnected : boolean
+  }
+]
+
+
+client gui info_hash và peer_id để định danh --> kiểm tra trong peers 
+  nếu connecting_peer nhỏ hơn 5 kiểm tra trong peers
+  nếu lớn hơn 5 reject
 
 
 # gen mesage_request_block_queue = 

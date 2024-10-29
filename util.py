@@ -10,6 +10,7 @@ from tkinter import messagebox
 import requests
 import random
 from message_type import EMesage_Type
+import pickle
 
 
 load_dotenv()
@@ -26,7 +27,9 @@ def calculate_piece_length(file_length):
     :return: piece length (tính bằng byte)
     """
     # Định nghĩa các khoảng kích thước file và piece length tương ứng
-    if file_length < 1 * 1024 * 1024 * 1024:  # Dưới 1 GB
+    if file_length < 1 * 512 * 1024:
+        return file_length
+    elif file_length < 1 * 1024 * 1024 * 1024:  # Dưới 1 GB
         return 512 * 1024  # 512 KB
     elif file_length < 4 * 1024 * 1024 * 1024:  # Dưới 4 GB
         return 1 * 1024 * 1024  # 1 MB
@@ -203,15 +206,19 @@ def gen_set_peer(peers):
     # print('gen set peer --------------')
     seen_ip_port = set()
     unique_peers = []
-    for item in peers.items():
-        list_peer = item[1]
-        for peer in list_peer:
-            # peer = {ip, port, peer_id, speed }
-            ip_port = (peer["ip"], peer["port"])
-            if ip_port not in seen_ip_port:
-                peer['isConnected'] = False
-                unique_peers.append(peer)
-                seen_ip_port.add(ip_port)
+
+    for peer in peers:
+        # peer = {ip, port, peer_id, speed }
+        ip_port = (peer["ip"], peer["port"])
+        if ip_port not in seen_ip_port:
+            peer['isConnected'] = False
+            unique_peers.append({
+                "ip": peer['ip'],
+                'port': peer['port'],
+                "speed": peer['speed'],
+                "isConnected": False,
+            })
+            seen_ip_port.add(ip_port)
     # print(unique_peers, 'unique_peers')
     # print('-------------')
     unique_peers.sort(key=lambda x: x['speed'], reverse=True)
@@ -223,11 +230,14 @@ def convert_message_dict_to_byte(message):
     return message_json.encode('utf-8')
 
 
-def handle_message_client(conn, message_dict, connecting_peers, status, list_progress):
+def handle_message_client(conn, message_dict, connecting_peers, list_progress):
+    # print('--------------------')
     # print('MESSAGE FROM CLIENT', message_dict)
+    # print('--------------------')
+
     if message_dict['type'] == EMesage_Type.HANDSHAKE.value:
         handle_message_request_handshake(
-            conn, message_dict, connecting_peers, status, list_progress)
+            conn, message_dict, connecting_peers, list_progress)
     elif message_dict['type'] == EMesage_Type.BLOCK.value:
         handle_message_request_block(conn, message_dict, list_progress)
     else:
@@ -235,13 +245,17 @@ def handle_message_client(conn, message_dict, connecting_peers, status, list_pro
         conn.close()
 
 
-def handle_message_request_handshake(conn, message_dict, connecting_peers, status, list_progress):
+def handle_message_request_handshake(conn, message_dict, connecting_peers, list_progress):
     '''
     message_dict = {
-        type: 'HANDSHAKE'
+        type: 'HANDSHAKE',
+        ip: string,
+        port:number,
         dowloading_file = [
             {
                 info_hash :string,
+                ip: string,
+                port: number
                 peer_id: string,
             }
         ]
@@ -250,14 +264,13 @@ def handle_message_request_handshake(conn, message_dict, connecting_peers, statu
         {
             ip: string,
             port: string,
-            peer_id: string,
             speed: number,
             isConnected: boolean
         }
     ]
     '''
     downloading_files = message_dict['downloading_file']
-    if is_allow_connect(downloading_files, connecting_peers):
+    if is_allow_connect(message_dict, connecting_peers):
         list_progess = list_progress
         list_downloading_info_hash = [item['info_hash']
                                       for item in downloading_files]
@@ -277,7 +290,6 @@ def handle_message_request_handshake(conn, message_dict, connecting_peers, statu
         message_response_handshake_byte = convert_message_dict_to_byte(
             message_response_handshake)
         conn.sendall(message_response_handshake_byte)
-        status['isAccept'] = True
     else:
         message_reject = {
             "type": EMesage_Type.REJECT.value,
@@ -285,15 +297,21 @@ def handle_message_request_handshake(conn, message_dict, connecting_peers, statu
         }
         message_reject_byte = convert_message_dict_to_byte(message_reject)
         conn.sendall(message_reject_byte)
-        status['isAccept'] = False
         conn.close()
 
 
-def is_allow_connect(downloading_files, connecting_peers):
-    connecting_peer_ids = [item['peer_id'] for item in connecting_peers]
-    list_exist = [
-        item for item in downloading_files if item['peer_id'] in connecting_peer_ids]
-    return len(list_exist) != 0
+def is_allow_connect(message_dict, connecting_peers):
+    if len(connecting_peers) < 5:
+        connecting_peers += [{
+            "ip": message_dict['ip'],
+            "port": message_dict['port'],
+            "speed": 0,
+            'isConnected': False
+        }]
+    for peer in connecting_peers:
+        if peer['ip'] == message_dict['ip'] and peer['port'] == message_dict['port']:
+            return True
+    return False
 
 
 def handle_message_request_block(conn, message_dict, list_progress):
@@ -309,12 +327,14 @@ def handle_message_request_block(conn, message_dict, list_progress):
         type: BLOCK
     }
     '''
+    # print('MESSAGE REQUEST BLOCK', message_dict)
     info_hash = message_dict['info_hash']
     peer_id_server = message_dict['peer_id_server']
     offset = message_dict['offset']
     block_size = message_dict['block_size']
     find_progress = next(
         (progress for progress in list_progress if progress['info_hash'] == info_hash and progress['peer_id'] == peer_id_server), None)
+
     if find_progress:
         file_path = find_progress['file_path']
         data = read_block(file_path, offset, block_size)
@@ -328,14 +348,17 @@ def handle_message_request_block(conn, message_dict, list_progress):
             "block_size": block_size,
             "type": EMesage_Type.BLOCK.value,
         }
-        message_response_block_byte = convert_message_dict_to_byte(
-            message_response_block)
+        message_response_block_byte = pickle.dumps(message_response_block)
+        find_progress['uploaded'] += block_size
         conn.sendall(message_response_block_byte)
         conn.send(b"<END>")
 
 
 def handle_message_server(client_socket, message_dict, peer, list_progress, message_request_block_queue):
+    # print('---------------------------------')
     # print('MESSAGE FROM SERVER', message_dict)
+    # print('---------------------------------')
+
     if message_dict['type'] == EMesage_Type.HANDSHAKE.value:
         handle_message_reponse_handshake(
             client_socket, message_dict, list_progress, message_request_block_queue)
@@ -405,6 +428,22 @@ def handle_message_response_block(client_socket, message_dict, list_progress):
 
     }
     '''
+    info_hash = message_dict['info_hash']
+    peer_id_client = message_dict['peer_id_client']
+    piece_index = message_dict['piece_index']
+    block_index = message_dict['block_index']
+    offset = message_dict['offset']
+    block_size = message_dict['block_size']
+    find_progress = next(
+        (progress for progress in list_progress if progress['info_hash'] == info_hash and progress['peer_id'] == peer_id_client), None)
+    if find_progress:
+        file_path = find_progress['file_path']
+        write_block_to_file(
+            file_path, message_dict['data'], offset, block_size)
+        pieces = find_progress['pieces']
+        block = pieces[piece_index]["blocks"][block_index]
+        block['isDownloaded'] = True
+        find_progress['downloaded'] += block['block_size']
 
 
 def read_block(file_path, offset, block_size):
@@ -412,3 +451,14 @@ def read_block(file_path, offset, block_size):
         file.seek(offset)
         data = file.read(block_size)
     return data
+
+
+def write_block_to_file(file_path, data, offset, block_size):
+
+    if not os.path.exists(file_path):
+        with open(file_path, 'wb') as file:
+            pass  # Tạo file trống nếu không tồn tại
+    with open(file_path, 'r+b') as file:  # Mở file ở chế độ đọc và ghi nhị phân
+        file.seek(offset)  # Di chuyển con trỏ file đến vị trí offset
+        # Ghi dữ liệu có kích thước block_size vào file
+        file.write(data[:block_size])

@@ -14,6 +14,8 @@ import time
 from util import server_url, gen_set_connecting_peer, gen_set_peer, handle_message_client, convert_message_dict_to_byte, handle_message_server
 import json
 from message_type import EMesage_Type
+import pickle
+
 
 lock = Lock()
 stop_event = threading.Event()
@@ -24,15 +26,18 @@ def add_message_request_queue(info_hash, queue):
 
 
 # # chọn 5 peer
-def select_peer_per_ten_second():
-    while True:
-        clientUi.set_peers = gen_set_peer(clientUi.peers)
-        clientUi.connecting_peers = gen_set_connecting_peer(clientUi.set_peers)
-        time.sleep(10)
+# def select_peer_per_ten_second():
+#     while True:
+#         clientUi.set_peers = gen_set_peer(clientUi.peers)
+#         clientUi.connecting_peers = gen_set_connecting_peer(clientUi.set_peers)
+#         time.sleep(10)
 
 
 # refresh peers
-def refresh_peers_per_30_second():
+def refresh_peers_per_30_minutes():
+    clientUi.peers = []
+    clientUi.set_peers = []
+    clientUi.connecting_peers = []
     while True:
         for progress in clientUi.list_progress:
             event = progress['event']
@@ -58,7 +63,7 @@ def refresh_peers_per_30_second():
                 #         "Lỗi hệ thông", 'Lỗi khi refresh peer')
                 #     print(f"Failed to download: {
                 #         response.status_code} - {response.text}")
-        time.sleep(30)
+        time.sleep(30*60)
 
 
 # Function to get the host IP address
@@ -181,13 +186,13 @@ def connect_to_peer(peer):
                 message_handshake_byte = convert_message_dict_to_byte(
                     message_handshake)
                 client_socket.sendall(message_handshake_byte)
-                message_handshake = []
+                message_handshake['downloading_file'] = []
                 data = client_socket.recv(1024)
                 message_dict = json.loads(data.decode('utf-8'))
                 handle_message_server(
                     client_socket, message_dict, peer, clientUi.list_progress, message_request_block_queue)
 
-            # send message request block
+            # send message request
             if message_request_block_queue != []:
                 message_request_block = message_request_block_queue.pop(0)
                 message_request_block_byte = convert_message_dict_to_byte(
@@ -199,13 +204,15 @@ def connect_to_peer(peer):
                 response = b''
                 while not is_receive_full_response:
                     data = client_socket.recv(1024)
-                    if response[-5:] == b"<END>":
+                    response += data
+                    if response[-5:] == b'<END>':
                         is_receive_full_response = True
-                    else:
-                        response += data
-                message_dict = json.loads(data.decode('utf-8'))
+                        response = response[:-5]
+
+                message_dict = pickle.loads(response)
                 handle_message_server(
                     client_socket, message_dict, peer, clientUi.list_progress, message_request_block_queue)
+        print('END CONNECT')
         return client_socket
     except Exception as e:
         peer['isConnected'] = False
@@ -217,14 +224,13 @@ def connect_to_peer(peer):
 
 def new_connection(addr, conn):
     print(f"Listen to this {addr}")
-    status = {'isAccept': True}
-    while status['isAccept']:
+    while True:
         try:
             data = conn.recv(1024)
             if data != b'':
                 message_dict = json.loads(data.decode('utf-8'))
                 handle_message_client(conn, message_dict,
-                                      clientUi.connecting_peers, status, clientUi.list_progress)
+                                      clientUi.connecting_peers, clientUi.list_progress)
         except Exception as e:
             message_reject = {
                 'type': EMesage_Type.REJECT.value,
@@ -232,7 +238,6 @@ def new_connection(addr, conn):
             }
             message_reject_byte = convert_message_dict_to_byte(message_reject)
             conn.sendall(message_reject_byte)
-            status['isAccept'] = False
             conn.close()
 
     # Peer-to-peer server to accept incoming connections
@@ -274,7 +279,8 @@ def client_process():
         # Chờ 10 giây và sau đó đặt Event để dừng luồng nếu chưa hoàn tất
         time.sleep(10)
         stop_event.set()  # Đặt Event, cho phép tất cả các luồng kiểm tra và thoát nếu cần
-
+        clientUi.set_peers = gen_set_peer(clientUi.peers)
+        clientUi.connecting_peers = gen_set_connecting_peer(clientUi.set_peers)
         # Chờ các luồng kết thúc
         [t.join() for t in threads]
 
@@ -285,8 +291,8 @@ if __name__ == "__main__":
     # Start the peer server in a thread
     Thread(target=server_process, args=(), daemon=True).start()
     Thread(target=client_process, args=(), daemon=True).start()
-    Thread(target=select_peer_per_ten_second, args=(), daemon=True).start()
-    Thread(target=refresh_peers_per_30_second, args=(), daemon=True).start()
+    # Thread(target=select_peer_per_ten_second, args=(), daemon=True).start()
+    Thread(target=refresh_peers_per_30_minutes, args=(), daemon=True).start()
     clientUi.run()
     # # Ask the user if they want to upload or download
     # action = input(

@@ -14,7 +14,7 @@ from message_type import EMesage_Type
 class ClientUI:
     def __init__(self, ip, port):
         self.ip = ip
-        self.peers = {}
+        self.peers = []
         self.set_peers = []
         self.connecting_peers = []
         self.port = port
@@ -24,7 +24,9 @@ class ClientUI:
         self.list_progress = read_download_progress()
         self.message_handshake = {
             "type": EMesage_Type.HANDSHAKE.value,
-            "downloading_file": []
+            'ip': ip,
+            'port': port,
+            "downloading_file": [],
         }
 
         # Tạo frame đầu trang
@@ -45,6 +47,11 @@ class ClientUI:
         self.content_frame.pack(fill=BOTH, expand=True)
         self.update_progress = None
 
+        for progress in self.list_progress:
+            self.complete_download(progress)
+
+        # send to tracker all completed file
+
     def stop_update_progress(self):
         # Hủy vòng lặp cập nhật
         if self.update_progress:
@@ -52,7 +59,6 @@ class ClientUI:
 
 
 # Hàm để chuyển đổi menu
-
 
     def toggle_menu(self):
         def collapse_toggle_menu():
@@ -163,7 +169,7 @@ class ClientUI:
                     "Download file", 'File đang được tải xuống vui lòng kiểm tra trong Downloads & Uploads')
             # Giả sử server trả về JSON
                 response_data = response.json()  # Chuyển đổi thành đối tượng Python
-                self.peers[peer_id] = response_data.get('Peers', [])
+                self.peers += response_data.get('Peers', [])
 
                 # push downloadding_file to message_handshake
                 self.message_handshake['downloading_file'].append(
@@ -264,7 +270,8 @@ class ClientUI:
         if response.status_code == 200:
             # xoa peers tham gia tai file nay
             if progress['event'] == 'started' or progress['event'] == 'completed':
-                del self.peers[peer_id]
+                self.peers = [peer for peer in self.peers if peer['peer_id']
+                              == peer_id and peer['info_hash'] == info_hash]
             # xoa tien trinh
             self.list_progress = [
                 item for item in self.list_progress if not (item['info_hash'] == info_hash and item['peer_id'] == peer_id)]
@@ -283,20 +290,22 @@ class ClientUI:
         # Hàm hiển thị nội dung Upload
 
     def pause_download(self, progress):
-        progress['event'] = 'stopped'
+        progress['event'] = 'stopped' if progress['event'] == 'started' else progress['event']
         info_hash = progress['info_hash']
         peer_id = progress['peer_id']
         uploaded = progress['uploaded']
         downloaded = progress['downloaded']
         left = progress['left']
-        event = progress['event']
+        event = 'stopped'
         url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={
             self.port}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={self.ip}"
         # try:
         response = requests.get(url)
         if response.status_code == 200:
             # Giả sử server trả về JSON
-            del self.peers[peer_id]
+
+            self.peers = [peer for peer in self.peers if peer['peer_id']
+                          == peer_id and peer['info_hash'] == info_hash]
             self.message_handshake['downloading_file'] = [message for message in self.message_handshake['downloading_file'] if not (
                 message['info_hash'] == info_hash and message['peer_id'] == peer_id)]
 
@@ -327,7 +336,7 @@ class ClientUI:
             if response.status_code == 200:
                 # Giả sử server trả về JSON
                 response_data = response.json()
-                self.peers[peer_id] = response_data.get('Peers', [])
+                self.peers += response_data.get('Peers', [])
                 self.message_handshake['downloading_file'].append(
                     {'info_hash': info_hash, 'peer_id': peer_id})
 
@@ -353,8 +362,8 @@ class ClientUI:
         try:
             response = requests.get(url)
             if response.status_code == 200:
-                del self.peers[peer_id]
-                self.message_handshake['downloading_file'] = []
+                self.message_handshake['downloading_file'] = [
+                    item for item in self.message_handshake['downloading_file'] if item['info_hash'] != info_hash and item['peer_id'] != peer_id]
             else:
                 messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
                 print(f"Failed to download: {
@@ -405,7 +414,7 @@ class ClientUI:
                 if response.status_code == 200:
                     response_data = response.json()
                     # luu peers
-                    self.peers[peer_id] = response_data.get("Peers", [])
+                    self.peers += response_data.get("Peers", [])
                     # luu mata info
                     add_metainfo_file(body)
                     # luu progress

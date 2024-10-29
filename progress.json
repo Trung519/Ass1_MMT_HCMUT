@@ -1,1 +1,161 @@
-[]
+[
+    {
+        "metainfo_file": {
+            "info": {
+                "piece_length": 357376,
+                "pieces": "yKQYL0OY07dy2vXy6mbj5ksD3IM=",
+                "name": "1.2 ti\u1ec3u k\u1ebft ch\u01b0\u01a1ng 1 final.doc",
+                "length": 357376
+            },
+            "createBy": "nguye",
+            "info_hash": "9ac328ff87f99bf960c20425e2f011322b4a3b2c"
+        },
+        "file_path": "C:/Users/nguye/Downloads/1.2 ti\u1ec3u k\u1ebft ch\u01b0\u01a1ng 1 final.doc",
+        "info_hash": "9ac328ff87f99bf960c20425e2f011322b4a3b2c",
+        "uploaded": 0,
+        "downloaded": 357376,
+        "left": 0,
+        "event": "completed",
+        "pieces": [
+            {
+                "piece_index": 0,
+                "isDownloaded": true,
+                "blocks": [
+                    {
+                        "offset": 0,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 0
+                    },
+                    {
+                        "offset": 16384,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 1
+                    },
+                    {
+                        "offset": 32768,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 2
+                    },
+                    {
+                        "offset": 49152,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 3
+                    },
+                    {
+                        "offset": 65536,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 4
+                    },
+                    {
+                        "offset": 81920,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 5
+                    },
+                    {
+                        "offset": 98304,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 6
+                    },
+                    {
+                        "offset": 114688,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 7
+                    },
+                    {
+                        "offset": 131072,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 8
+                    },
+                    {
+                        "offset": 147456,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 9
+                    },
+                    {
+                        "offset": 163840,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 10
+                    },
+                    {
+                        "offset": 180224,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 11
+                    },
+                    {
+                        "offset": 196608,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 12
+                    },
+                    {
+                        "offset": 212992,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 13
+                    },
+                    {
+                        "offset": 229376,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 14
+                    },
+                    {
+                        "offset": 245760,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 15
+                    },
+                    {
+                        "offset": 262144,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 16
+                    },
+                    {
+                        "offset": 278528,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 17
+                    },
+                    {
+                        "offset": 294912,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 18
+                    },
+                    {
+                        "offset": 311296,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 19
+                    },
+                    {
+                        "offset": 327680,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 20
+                    },
+                    {
+                        "offset": 344064,
+                        "block_size": 13312,
+                        "isDownloaded": true,
+                        "block_index": 21
+                    }
+                ]
+            }
+        ],
+        "peer_id": "00366d61-2189-4099-aa40-786667cd9aa8"
+    }
+]
