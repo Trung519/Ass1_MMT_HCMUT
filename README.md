@@ -39,6 +39,20 @@ message_response_block = {
   info_hash: string,
   peer_id_client: string,
   piece_index: number,
+  block_index: number
   offset: number,
+  block_size: number
   type: "BLOCK",
 }
+
+
+# gen mesage_request_block_queue = 
+
+# gửi message request block: check xem block đã được tải chưa
+
+# đợi nhận phản hồi từ server
+
+
+# server gửi block gửi kèm thêm b'END' 
+
+# client 

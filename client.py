@@ -18,8 +18,6 @@ from message_type import EMesage_Type
 lock = Lock()
 stop_event = threading.Event()
 
-message_request_block_queue = {}
-
 
 def add_message_request_queue(info_hash, queue):
     pass
@@ -176,6 +174,7 @@ def connect_to_peer(peer):
         peer['isConnected'] = True
 
         message_handshake = clientUi.message_handshake
+        message_request_block_queue = []
         while peer['isConnected']:
             # send mesage handshake
             if message_handshake['downloading_file'] != []:
@@ -183,23 +182,30 @@ def connect_to_peer(peer):
                     message_handshake)
                 client_socket.sendall(message_handshake_byte)
                 message_handshake = []
+                data = client_socket.recv(1024)
+                message_dict = json.loads(data.decode('utf-8'))
+                handle_message_server(
+                    client_socket, message_dict, peer, clientUi.list_progress, message_request_block_queue)
 
             # send message request block
+            if message_request_block_queue != []:
+                message_request_block = message_request_block_queue.pop(0)
+                message_request_block_byte = convert_message_dict_to_byte(
+                    message_request_block)
+                message_request_block_byte
+                client_socket.sendall(message_request_block_byte)
 
-            data = client_socket.recv(1024)
-            message_dict = json.loads(data.decode('utf-8'))
-            handle_message_server(
-                client_socket, message_dict, peer, clientUi.list_progress)
-        # clone message_queue
-        # các thread khác cũng phải gửi các message này
-        # Send a test message
-        # message = f"Hello from peer {peer_id}"
-        # client_socket.sendall(message.encode())
-
-        # gửi pieces_info chưa tải xong và hash_info
-
-        # Receive response from peer
-
+                is_receive_full_response = False
+                response = b''
+                while not is_receive_full_response:
+                    data = client_socket.recv(1024)
+                    if response[-5:] == b"<END>":
+                        is_receive_full_response = True
+                    else:
+                        response += data
+                message_dict = json.loads(data.decode('utf-8'))
+                handle_message_server(
+                    client_socket, message_dict, peer, clientUi.list_progress, message_request_block_queue)
         return client_socket
     except Exception as e:
         peer['isConnected'] = False

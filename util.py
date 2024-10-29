@@ -131,13 +131,16 @@ def genMetainfoFile(file_path):
 def split_piece_into_blocks(piece_length, isUpload, block_size=16*1024):
     blocks = []
     offset = 0
+    block_index = 0
     while offset < piece_length:
         current_block_size = min(block_size, piece_length - offset)
         blocks.append({
             'offset': offset,
             'block_size': current_block_size,
             'isDownloaded': isUpload,
+            'block_index': block_index
         })
+        block_index += 1
         offset += current_block_size
     return blocks
 
@@ -221,11 +224,12 @@ def convert_message_dict_to_byte(message):
 
 
 def handle_message_client(conn, message_dict, connecting_peers, status, list_progress):
+    # print('MESSAGE FROM CLIENT', message_dict)
     if message_dict['type'] == EMesage_Type.HANDSHAKE.value:
         handle_message_request_handshake(
             conn, message_dict, connecting_peers, status, list_progress)
     elif message_dict['type'] == EMesage_Type.BLOCK.value:
-        handle_message_request_block(conn, message_dict)
+        handle_message_request_block(conn, message_dict, list_progress)
     else:
         print('type message khong xac dinh')
         conn.close()
@@ -292,19 +296,61 @@ def is_allow_connect(downloading_files, connecting_peers):
     return len(list_exist) != 0
 
 
-def handle_message_request_block(conn, message_dict):
-    pass
+def handle_message_request_block(conn, message_dict, list_progress):
+    '''
+    message_dict= {
+        peer_id_client: string,
+        peer_id_server: string,
+        info_hash: string,
+        piece_index: number
+        block_index: number
+        block_size: number
+        offset:number,
+        type: BLOCK
+    }
+    '''
+    info_hash = message_dict['info_hash']
+    peer_id_server = message_dict['peer_id_server']
+    offset = message_dict['offset']
+    block_size = message_dict['block_size']
+    find_progress = next(
+        (progress for progress in list_progress if progress['info_hash'] == info_hash and progress['peer_id'] == peer_id_server), None)
+    if find_progress:
+        file_path = find_progress['file_path']
+        data = read_block(file_path, offset, block_size)
+        message_response_block = {
+            "data": data,
+            "info_hash": info_hash,
+            'peer_id_client': message_dict['peer_id_client'],
+            "piece_index": message_dict['piece_index'],
+            "block_index": message_dict['block_index'],
+            "offset": offset,
+            "block_size": block_size,
+            "type": EMesage_Type.BLOCK.value,
+        }
+        message_response_block_byte = convert_message_dict_to_byte(
+            message_response_block)
+        conn.sendall(message_response_block_byte)
+        conn.send(b"<END>")
 
 
-def handle_message_server(client_socket, message_dict, peer, list_progress):
+def handle_message_server(client_socket, message_dict, peer, list_progress, message_request_block_queue):
+    # print('MESSAGE FROM SERVER', message_dict)
     if message_dict['type'] == EMesage_Type.HANDSHAKE.value:
         handle_message_reponse_handshake(
-            client_socket, message_dict, list_progress)
+            client_socket, message_dict, list_progress, message_request_block_queue)
     elif message_dict['type'] == EMesage_Type.REJECT.value:
         handle_message_response_reject(client_socket, message_dict, peer)
+    elif message_dict['type'] == EMesage_Type.BLOCK.value:
+        handle_message_response_block(
+            client_socket, message_dict, list_progress)
+    else:
+        print('type khong xac dinh')
+        client_socket.close()
+        peer['isConnected'] = False
 
 
-def handle_message_reponse_handshake(client_socket, message_dict, list_progress):
+def handle_message_reponse_handshake(client_socket, message_dict, list_progress, message_request_block_queue):
     '''
     message_dict = {
         type: 'HANDSHAKE',
@@ -317,18 +363,52 @@ def handle_message_reponse_handshake(client_socket, message_dict, list_progress)
         ]
     }
     '''
-    pieces_info = message_dict['pieces_info']
-    for piece_info in pieces_info:
-        piece_index_is_downloaded = piece_info['piece_index']
-        peer_id_server = piece_info['peer_id']
-        info_hash = piece_info['info_hash']
-        for progress in list_progress:
-            if progress['info_hash'] == piece_info['info_hash']:
-                list_pieces_need_to_download = [{"piece_id_client": progress['peer_id'], "peer_id_server": peer_id_server, 'info_hash': info_hash,
-                                                 'piece_index':  piece_index_is_downloaded} for piece in progress['pieces'] if not piece[piece_index_is_downloaded]]
-    print('MESSAGE_SERVER_RESPONSE_HANDSHAKE', message_dict)
+    for progress in list_progress:
+        pieces = progress['pieces']
+        for piece_info in message_dict['pieces_info']:
+            if progress['info_hash'] != piece_info['info_hash']:
+                continue
+            piece_index_server = piece_info['piece_index']
+            peer_id_server = piece_info['peer_id']
+            piece_client = pieces[piece_index_server]
+            if not piece_client['isDownloaded']:
+                blocks = piece_client['blocks']
+                message_request_block_queue += [
+                    {
+                        "peer_id_client": progress['peer_id'],
+                        "peer_id_server": peer_id_server,
+                        "info_hash": progress['info_hash'],
+                        "piece_index": piece_index_server,
+                        "offset": block['offset'],
+                        'block_index': block['block_index'],
+                        'block_size': block['block_size'],
+                        "type": EMesage_Type.BLOCK.value,
+                    }for block in blocks if not block['isDownloaded']]
 
 
 def handle_message_response_reject(client_socket, message_dict, peer):
     peer['isConnected'] = False
     client_socket.close()
+
+
+def handle_message_response_block(client_socket, message_dict, list_progress):
+    '''
+    message_dict = {
+        type: 'BLOCK',
+        data: byte,
+        info_hash: string,
+        peer_id_client: string,
+        piece_index: string,
+        block_index: number,
+        block_size: number
+        offset : number,
+
+    }
+    '''
+
+
+def read_block(file_path, offset, block_size):
+    with open(file_path, "rb") as file:
+        file.seek(offset)
+        data = file.read(block_size)
+    return data
