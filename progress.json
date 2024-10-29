@@ -2,18 +2,18 @@
     {
         "metainfo_file": {
             "info": {
-                "piece_length": 357376,
-                "pieces": "yKQYL0OY07dy2vXy6mbj5ksD3IM=",
-                "name": "1.2 ti\u1ec3u k\u1ebft ch\u01b0\u01a1ng 1 final.doc",
-                "length": 357376
+                "piece_length": 524288,
+                "pieces": "o89eeA/1gfn0JmweuJMYvX7YWqjrKCvWJgGYP0961wHrFctUcPpoxRx9BZzooaI5/BHCV7noDL6noInh",
+                "name": "BTL_L09_Nh\u00f3m 10.docx",
+                "length": 1152572
             },
             "createBy": "nguye",
-            "info_hash": "9ac328ff87f99bf960c20425e2f011322b4a3b2c"
+            "info_hash": "58052a7cea9572646fc73ba30e6758ff0fa60bf3"
         },
-        "file_path": "C:/Users/nguye/Downloads/1.2 ti\u1ec3u k\u1ebft ch\u01b0\u01a1ng 1 final.doc",
-        "info_hash": "9ac328ff87f99bf960c20425e2f011322b4a3b2c",
-        "uploaded": 0,
-        "downloaded": 357376,
+        "file_path": "C:/Users/nguye/Downloads/BTL_L09_Nh\u00f3m 10.docx",
+        "info_hash": "58052a7cea9572646fc73ba30e6758ff0fa60bf3",
+        "uploaded": 1152572,
+        "downloaded": 1152572,
         "left": 0,
         "event": "completed",
         "pieces": [
@@ -149,13 +149,442 @@
                     },
                     {
                         "offset": 344064,
-                        "block_size": 13312,
+                        "block_size": 16384,
                         "isDownloaded": true,
                         "block_index": 21
+                    },
+                    {
+                        "offset": 360448,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 22
+                    },
+                    {
+                        "offset": 376832,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 23
+                    },
+                    {
+                        "offset": 393216,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 24
+                    },
+                    {
+                        "offset": 409600,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 25
+                    },
+                    {
+                        "offset": 425984,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 26
+                    },
+                    {
+                        "offset": 442368,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 27
+                    },
+                    {
+                        "offset": 458752,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 28
+                    },
+                    {
+                        "offset": 475136,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 29
+                    },
+                    {
+                        "offset": 491520,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 30
+                    },
+                    {
+                        "offset": 507904,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 31
+                    }
+                ]
+            },
+            {
+                "piece_index": 1,
+                "isDownloaded": true,
+                "blocks": [
+                    {
+                        "offset": 0,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 0
+                    },
+                    {
+                        "offset": 16384,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 1
+                    },
+                    {
+                        "offset": 32768,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 2
+                    },
+                    {
+                        "offset": 49152,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 3
+                    },
+                    {
+                        "offset": 65536,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 4
+                    },
+                    {
+                        "offset": 81920,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 5
+                    },
+                    {
+                        "offset": 98304,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 6
+                    },
+                    {
+                        "offset": 114688,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 7
+                    },
+                    {
+                        "offset": 131072,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 8
+                    },
+                    {
+                        "offset": 147456,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 9
+                    },
+                    {
+                        "offset": 163840,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 10
+                    },
+                    {
+                        "offset": 180224,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 11
+                    },
+                    {
+                        "offset": 196608,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 12
+                    },
+                    {
+                        "offset": 212992,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 13
+                    },
+                    {
+                        "offset": 229376,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 14
+                    },
+                    {
+                        "offset": 245760,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 15
+                    },
+                    {
+                        "offset": 262144,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 16
+                    },
+                    {
+                        "offset": 278528,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 17
+                    },
+                    {
+                        "offset": 294912,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 18
+                    },
+                    {
+                        "offset": 311296,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 19
+                    },
+                    {
+                        "offset": 327680,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 20
+                    },
+                    {
+                        "offset": 344064,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 21
+                    },
+                    {
+                        "offset": 360448,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 22
+                    },
+                    {
+                        "offset": 376832,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 23
+                    },
+                    {
+                        "offset": 393216,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 24
+                    },
+                    {
+                        "offset": 409600,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 25
+                    },
+                    {
+                        "offset": 425984,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 26
+                    },
+                    {
+                        "offset": 442368,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 27
+                    },
+                    {
+                        "offset": 458752,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 28
+                    },
+                    {
+                        "offset": 475136,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 29
+                    },
+                    {
+                        "offset": 491520,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 30
+                    },
+                    {
+                        "offset": 507904,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 31
+                    }
+                ]
+            },
+            {
+                "piece_index": 2,
+                "isDownloaded": true,
+                "blocks": [
+                    {
+                        "offset": 0,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 0
+                    },
+                    {
+                        "offset": 16384,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 1
+                    },
+                    {
+                        "offset": 32768,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 2
+                    },
+                    {
+                        "offset": 49152,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 3
+                    },
+                    {
+                        "offset": 65536,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 4
+                    },
+                    {
+                        "offset": 81920,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 5
+                    },
+                    {
+                        "offset": 98304,
+                        "block_size": 5692,
+                        "isDownloaded": true,
+                        "block_index": 6
                     }
                 ]
             }
         ],
-        "peer_id": "00366d61-2189-4099-aa40-786667cd9aa8"
+        "peer_id": "68e428c0-cd26-4715-9fa6-301b3be75c46"
+    },
+    {
+        "metainfo_file": {
+            "info": {
+                "piece_length": 256161,
+                "pieces": "PY3JtksGZgohfxKTSRB39kelt5k=",
+                "name": "CDTC - CH\u01af\u01a0NG-9_NH\u00d3M-5.docx.pdf",
+                "length": 256161
+            },
+            "createBy": "nguye",
+            "info_hash": "a980660ca9bf35312164dd7d202bc1f16158e28f"
+        },
+        "file_path": "C:/Users/nguye/Downloads/CDTC - CH\u01af\u01a0NG-9_NH\u00d3M-5.docx.pdf",
+        "info_hash": "a980660ca9bf35312164dd7d202bc1f16158e28f",
+        "uploaded": 256161,
+        "downloaded": 256161,
+        "left": 0,
+        "event": "completed",
+        "pieces": [
+            {
+                "piece_index": 0,
+                "isDownloaded": true,
+                "blocks": [
+                    {
+                        "offset": 0,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 0
+                    },
+                    {
+                        "offset": 16384,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 1
+                    },
+                    {
+                        "offset": 32768,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 2
+                    },
+                    {
+                        "offset": 49152,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 3
+                    },
+                    {
+                        "offset": 65536,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 4
+                    },
+                    {
+                        "offset": 81920,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 5
+                    },
+                    {
+                        "offset": 98304,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 6
+                    },
+                    {
+                        "offset": 114688,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 7
+                    },
+                    {
+                        "offset": 131072,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 8
+                    },
+                    {
+                        "offset": 147456,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 9
+                    },
+                    {
+                        "offset": 163840,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 10
+                    },
+                    {
+                        "offset": 180224,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 11
+                    },
+                    {
+                        "offset": 196608,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 12
+                    },
+                    {
+                        "offset": 212992,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 13
+                    },
+                    {
+                        "offset": 229376,
+                        "block_size": 16384,
+                        "isDownloaded": true,
+                        "block_index": 14
+                    },
+                    {
+                        "offset": 245760,
+                        "block_size": 10401,
+                        "isDownloaded": true,
+                        "block_index": 15
+                    }
+                ]
+            }
+        ],
+        "peer_id": "9f49a41f-5560-44a2-a815-9eca7a8e743c"
     }
 ]

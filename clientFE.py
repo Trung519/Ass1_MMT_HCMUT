@@ -181,9 +181,10 @@ class ClientUI:
         except Exception as e:
             messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
             print(f"Error during download: {e}")
-
+        length = metainfo['info']['length']
         for i in range(num_piece):
-            blocks = split_piece_into_blocks(piece_length, False)
+            rest = length - i*piece_length
+            blocks = split_piece_into_blocks(min(rest, piece_length), False)
             pieces.append({
                 'piece_index': i,
                 'isDownloaded': False,

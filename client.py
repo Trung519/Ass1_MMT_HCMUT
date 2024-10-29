@@ -15,6 +15,7 @@ from util import server_url, gen_set_connecting_peer, gen_set_peer, handle_messa
 import json
 from message_type import EMesage_Type
 import pickle
+from tqdm import tqdm
 
 
 lock = Lock()
@@ -186,9 +187,18 @@ def connect_to_peer(peer):
                 message_handshake_byte = convert_message_dict_to_byte(
                     message_handshake)
                 client_socket.sendall(message_handshake_byte)
+                client_socket.send(b'<END>')
                 message_handshake['downloading_file'] = []
-                data = client_socket.recv(1024)
-                message_dict = json.loads(data.decode('utf-8'))
+                is_receive_full_response = False
+                response = b''
+
+                while not is_receive_full_response:
+                    data = client_socket.recv(1024)
+                    response += data
+                    if response[-5:] == b'<END>':
+                        is_receive_full_response = True
+                        response = response[:-5]
+                message_dict = json.loads(response.decode('utf-8'))
                 handle_message_server(
                     client_socket, message_dict, peer, clientUi.list_progress, message_request_block_queue)
 
@@ -199,9 +209,10 @@ def connect_to_peer(peer):
                     message_request_block)
                 message_request_block_byte
                 client_socket.sendall(message_request_block_byte)
-
+                client_socket.send(b'<END>')
                 is_receive_full_response = False
                 response = b''
+
                 while not is_receive_full_response:
                     data = client_socket.recv(1024)
                     response += data
@@ -226,18 +237,27 @@ def new_connection(addr, conn):
     print(f"Listen to this {addr}")
     while True:
         try:
-            data = conn.recv(1024)
-            if data != b'':
-                message_dict = json.loads(data.decode('utf-8'))
-                handle_message_client(conn, message_dict,
-                                      clientUi.connecting_peers, clientUi.list_progress)
+            is_receive_full_request = False
+            request = b''
+            while not is_receive_full_request:
+                data = conn.recv(1024)
+                request += data
+                if request[-5:] == b'<END>':
+                    is_receive_full_request = True
+                    request = request[:-5]
+
+            message_dict = json.loads(request.decode('utf-8'))
+            handle_message_client(conn, message_dict,
+                                  clientUi.connecting_peers, clientUi.list_progress)
         except Exception as e:
+            print(e)
             message_reject = {
                 'type': EMesage_Type.REJECT.value,
                 'message': "Lỗi kết nối"
             }
             message_reject_byte = convert_message_dict_to_byte(message_reject)
             conn.sendall(message_reject_byte)
+            conn.send(b'<END>')
             conn.close()
 
     # Peer-to-peer server to accept incoming connections

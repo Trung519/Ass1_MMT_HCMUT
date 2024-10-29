@@ -152,9 +152,11 @@ def genProgress(file_path, isUpload):
     metainfo_file = genMetainfoFile(file_path)
     piece_length = metainfo_file['info']['piece_length']
     num_piece = math.ceil(metainfo_file['info']['length'] / piece_length)
+    length = metainfo_file['info']['length']
     pieces = []
     for i in range(num_piece):
-        blocks = split_piece_into_blocks(piece_length, isUpload)
+        rest = length - i * piece_length
+        blocks = split_piece_into_blocks(min(rest, piece_length), isUpload)
         pieces.append({
             'piece_index': i,
             'isDownloaded': isUpload,
@@ -231,9 +233,9 @@ def convert_message_dict_to_byte(message):
 
 
 def handle_message_client(conn, message_dict, connecting_peers, list_progress):
-    # print('--------------------')
-    # print('MESSAGE FROM CLIENT', message_dict)
-    # print('--------------------')
+    print('--------------------')
+    print('MESSAGE FROM CLIENT', message_dict)
+    print('--------------------')
 
     if message_dict['type'] == EMesage_Type.HANDSHAKE.value:
         handle_message_request_handshake(
@@ -290,6 +292,7 @@ def handle_message_request_handshake(conn, message_dict, connecting_peers, list_
         message_response_handshake_byte = convert_message_dict_to_byte(
             message_response_handshake)
         conn.sendall(message_response_handshake_byte)
+        conn.send(b'<END>')
     else:
         message_reject = {
             "type": EMesage_Type.REJECT.value,
@@ -297,6 +300,7 @@ def handle_message_request_handshake(conn, message_dict, connecting_peers, list_
         }
         message_reject_byte = convert_message_dict_to_byte(message_reject)
         conn.sendall(message_reject_byte)
+        conn.send(b'<END>')
         conn.close()
 
 
@@ -332,12 +336,15 @@ def handle_message_request_block(conn, message_dict, list_progress):
     peer_id_server = message_dict['peer_id_server']
     offset = message_dict['offset']
     block_size = message_dict['block_size']
+    piece_index = message_dict['piece_index']
     find_progress = next(
         (progress for progress in list_progress if progress['info_hash'] == info_hash and progress['peer_id'] == peer_id_server), None)
 
     if find_progress:
         file_path = find_progress['file_path']
-        data = read_block(file_path, offset, block_size)
+        piece_length = find_progress['metainfo_file']['info']['piece_length']
+        data = read_block(file_path, piece_index *
+                          piece_length + offset, block_size)
         message_response_block = {
             "data": data,
             "info_hash": info_hash,
@@ -355,9 +362,9 @@ def handle_message_request_block(conn, message_dict, list_progress):
 
 
 def handle_message_server(client_socket, message_dict, peer, list_progress, message_request_block_queue):
-    # print('---------------------------------')
-    # print('MESSAGE FROM SERVER', message_dict)
-    # print('---------------------------------')
+    print('---------------------------------')
+    print('MESSAGE FROM SERVER', message_dict)
+    print('---------------------------------')
 
     if message_dict['type'] == EMesage_Type.HANDSHAKE.value:
         handle_message_reponse_handshake(
@@ -438,12 +445,17 @@ def handle_message_response_block(client_socket, message_dict, list_progress):
         (progress for progress in list_progress if progress['info_hash'] == info_hash and progress['peer_id'] == peer_id_client), None)
     if find_progress:
         file_path = find_progress['file_path']
+        piece_length = find_progress['metainfo_file']['info']['piece_length']
         write_block_to_file(
-            file_path, message_dict['data'], offset, block_size)
+            file_path, message_dict['data'], piece_index * piece_length + offset, block_size)
         pieces = find_progress['pieces']
         block = pieces[piece_index]["blocks"][block_index]
         block['isDownloaded'] = True
         find_progress['downloaded'] += block['block_size']
+        if find_progress['downloaded'] >= find_progress['metainfo_file']['info']['length']:
+            from client import clientUi
+            clientUi.complete_download(find_progress)
+            rename_file(file_path)
 
 
 def read_block(file_path, offset, block_size):
@@ -462,3 +474,22 @@ def write_block_to_file(file_path, data, offset, block_size):
         file.seek(offset)  # Di chuyển con trỏ file đến vị trí offset
         # Ghi dữ liệu có kích thước block_size vào file
         file.write(data[:block_size])
+
+
+def rename_file(file_path):
+    # Tách phần tên và phần mở rộng của file
+    base_name, ext = os.path.splitext(file_path)
+
+    # Nếu phần mở rộng là ".part", bắt đầu đổi tên
+    if ext == ".part":
+        new_name = base_name  # Tên mới bỏ phần mở rộng ".part"
+
+        # Kiểm tra xem tên file mới đã tồn tại chưa, nếu có thì thêm số thứ tự
+        counter = 1
+        while os.path.exists(new_name):  # Kiểm tra trùng tên
+            base_name2, ext2 = os.path.splitext(new_name)
+            new_name = f"{base_name2}({counter}){ext2}"
+            counter += 1
+
+        # Đổi tên file
+        os.rename(file_path, new_name)
