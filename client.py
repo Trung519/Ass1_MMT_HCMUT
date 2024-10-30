@@ -33,11 +33,13 @@ def generate_random_local_ip():
     return ip
 
 # Mỗi lần gọi hàm này bạn sẽ có một IP mới
-clientip = generate_random_local_ip()
+# clientip = generate_random_local_ip()
+clientip = "192.168.184.62"
 print(f"Client IP: {clientip}")
 clienID = None
 #clientip = get_host_default_interface_ip()
-port = random.randint(6000, 7000)
+# port = random.randint(6000, 7000)
+port = 5000
 server_ip = '127.0.0.1'  # Replace with your server's IP
 server_port = 5000       # Replace with your server's listening port (integer)
 
