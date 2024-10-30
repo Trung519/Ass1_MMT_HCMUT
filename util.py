@@ -11,6 +11,9 @@ import requests
 import random
 from message_type import EMesage_Type
 import pickle
+from threading import Lock
+import psutil
+lockConnect = Lock()
 
 
 load_dotenv()
@@ -443,6 +446,10 @@ def handle_message_response_block(client_socket, message_dict, list_progress):
     block_size = message_dict['block_size']
     find_progress = next(
         (progress for progress in list_progress if progress['info_hash'] == info_hash and progress['peer_id'] == peer_id_client), None)
+    print('----------------------------')
+    print('PIECE INDEX', piece_index)
+    print('BLOCK INDEX', block_index)
+    print('----------------------------')
     if find_progress:
         file_path = find_progress['file_path']
         piece_length = find_progress['metainfo_file']['info']['piece_length']
@@ -452,6 +459,7 @@ def handle_message_response_block(client_socket, message_dict, list_progress):
         block = pieces[piece_index]["blocks"][block_index]
         block['isDownloaded'] = True
         find_progress['downloaded'] += block['block_size']
+        find_progress['left'] -= block['block_size']
         if find_progress['downloaded'] >= find_progress['metainfo_file']['info']['length']:
             from client import clientUi
             clientUi.complete_download(find_progress)
@@ -493,3 +501,8 @@ def rename_file(file_path):
 
         # Đổi tên file
         os.rename(file_path, new_name)
+
+
+def delete_file(file_path):
+    if os.path.exists(file_path):
+        os.remove(file_path)

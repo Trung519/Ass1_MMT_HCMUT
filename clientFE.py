@@ -9,6 +9,7 @@ import bencodepy
 import uuid
 import math
 from message_type import EMesage_Type
+import time
 
 
 class ClientUI:
@@ -208,12 +209,12 @@ class ClientUI:
         # Hàm hiển thị nội dung Downloads
 
     def show_download_content(self):
-        print(self.set_peers, 'set peers')
-        print(self.connecting_peers, 'connecting peer')
-        print(self.peers, 'peers')
+        # print(self.set_peers, 'set peers')
+        # print(self.connecting_peers, 'connecting peer')
+        # print(self.peers, 'peers')
         # print('message handshake', self.message_handshake)
-        self.update_progress = self.content_frame.after(
-            1000, self.show_download_content)
+        # self.update_progress = self.content_frame.after(
+        #     1000, self.show_download_content)
         # Xóa nội dung cũ
         for widget in self.content_frame.winfo_children():
             widget.destroy()
@@ -264,6 +265,7 @@ class ClientUI:
         downloaded = progress['downloaded']
         left = progress['left']
         event = 'stopped'
+        file_path = progress['file_path']
         url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={
             self.port}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={self.ip}"
 
@@ -274,11 +276,15 @@ class ClientUI:
             if progress['event'] == 'started' or progress['event'] == 'completed':
                 self.peers = [peer for peer in self.peers if peer['peer_id']
                               == peer_id and peer['info_hash'] == info_hash]
+                self.set_peers = gen_set_peer(self.peers)
+                self.connecting_peers = gen_set_connecting_peer(self.set_peers)
             # xoa tien trinh
             self.list_progress = [
                 item for item in self.list_progress if not (item['info_hash'] == info_hash and item['peer_id'] == peer_id)]
             self.message_handshake['downloading_file'] = [message for message in self.message_handshake['downloading_file'] if not (
                 message['info_hash'] == info_hash and message['peer_id'] == peer_id)]
+            time.sleep(1)
+            delete_file(file_path)
 
         else:
             messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
@@ -308,10 +314,8 @@ class ClientUI:
 
             self.peers = [peer for peer in self.peers if peer['peer_id']
                           == peer_id and peer['info_hash'] == info_hash]
-            from client import lockConnect
-            with lockConnect:
-                self.set_peers = gen_set_peer(self.peers)
-                self.connecting_peers = gen_set_connecting_peer(self.set_peers)
+            self.set_peers = gen_set_peer(self.peers)
+            self.connecting_peers = gen_set_connecting_peer(self.set_peers)
 
             self.message_handshake['downloading_file'] = [message for message in self.message_handshake['downloading_file'] if not (
                 message['info_hash'] == info_hash and message['peer_id'] == peer_id)]
@@ -344,6 +348,8 @@ class ClientUI:
                 # Giả sử server trả về JSON
                 response_data = response.json()
                 self.peers += response_data.get('Peers', [])
+                self.set_peers = gen_set_peer(self.peers)
+                self.connecting_peers = gen_set_connecting_peer(self.set_peers)
                 self.message_handshake['downloading_file'].append(
                     {'info_hash': info_hash, 'peer_id': peer_id})
 
@@ -395,10 +401,19 @@ class ClientUI:
         label = Label(self.content_frame, text="Upload Content",
                       font=("Arial", 18), bg="white")
         label.place(relx=0.5)
-        button = Button(self.content_frame, text="Select File to Upload",
-                        command=self.select_file)
-        button.pack(padx=10, pady=10)
-        button.place(relx=0.55, rely=0.15)
+        button_frame = Frame(self.content_frame, bg='white')
+        # button_frame.pack(padx=10, pady=10)
+        button_frame.place(relx=0.5, rely=0.15)
+        button_file = Button(button_frame, text="Select File to Upload",
+                             command=self.select_file)
+        button_file.pack(side=LEFT)
+        # button_file.pack(padx=10, pady=10)
+        # button_file.place(relx=0.55, rely=0.15)
+        button_folder = Button(
+            button_frame, text='Select folder to Upload', command=self.select_folder)
+        button_folder.pack(side=RIGHT, padx=10)
+        # button_file.pack(padx=10, pady=10)
+        # button_file.place(relx=0.55, rely=0.15)
 
     def select_file(self):
         file_path = filedialog.askopenfilename()
@@ -436,6 +451,9 @@ class ClientUI:
                     "Lỗi hệ thông", 'Lỗi trong quá trình upload file')
                 print(f"Error during download: {e}")
 
+    def select_folder(self):
+        pass
+
     def on_closing(self):
         # Hiển thị hộp thoại xác nhận
         if messagebox.askokcancel("Thoát", "Bạn có chắc chắn muốn thoát chương trình?"):
@@ -447,6 +465,14 @@ class ClientUI:
                     "Lỗi server", "Lỗi gửi đến server tracker")
             # self.root.destroy()  # Đóng cửa sổ và thoát chương trình
             sys.exit()  # Exit chương trình
+
+    def isDisconnect(self, peer):
+        with lockConnect:
+            # Kiểm tra trong connecting_peers có peer nào có IP và port giống peer không
+            for connected_peer in self.connecting_peers:
+                if connected_peer['ip'] == peer['ip'] and connected_peer['port'] == peer['port']:
+                    return False  # Có peer với IP và port giống -> không ngắt kết nối
+            return True  # Không có peer nào trùng IP và port -> ngắt kết nối
 # Chạy vòng lặp chính của Tkinter
 
     def run(self):

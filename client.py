@@ -1,7 +1,7 @@
 import random
 import socket
 import requests
-from threading import Thread, Lock
+from threading import Thread
 import threading
 import hashlib
 import urllib.parse
@@ -18,19 +18,8 @@ import pickle
 from tqdm import tqdm
 
 
-lockConnect = Lock()
 stop_event = threading.Event()
 
-
-def isDisconnect(peer):
-    with lockConnect:
-        return peer not in clientUi.connecting_peers
-
-
-def removePeer(peer):
-    with lockConnect:
-        clientUi.connecting_peers = [
-            item for item in clientUi.connecting_peers if item != peer]
 
 # # chọn 5 peer
 # def select_peer_per_ten_second():
@@ -187,7 +176,7 @@ def connect_to_peer(peer):
         message_handshake = clientUi.message_handshake
         message_request_block_queue = []
         while peer['isConnected']:
-            if isDisconnect(peer):
+            if clientUi.isDisconnect(peer):
                 break
             # send mesage handshake
             if message_handshake['downloading_file'] != []:
@@ -200,8 +189,6 @@ def connect_to_peer(peer):
                 response = b''
 
                 while not is_receive_full_response:
-                    if isDisconnect(peer):
-                        break
                     data = client_socket.recv(1024)
                     response += data
                     if response[-5:] == b'<END>':
@@ -213,8 +200,10 @@ def connect_to_peer(peer):
 
             # send message request
             if message_request_block_queue != []:
-                if isDisconnect(peer):
+                print('CONNECTING PEER: ', clientUi.connecting_peers)
+                if clientUi.isDisconnect(peer):
                     break
+
                 message_request_block = message_request_block_queue.pop(0)
                 message_request_block_byte = convert_message_dict_to_byte(
                     message_request_block)

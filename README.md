@@ -86,6 +86,6 @@ client gui info_hash và peer_id để định danh --> kiểm tra trong peers
 # todo:
 - xử lí dừng  thread connect khi gọi hàm pause và hàm delete progress
 - upload thư mục
-- phân luồng để tải nhiều file đồng thời  hơn
+- phân luồng để tải nhiều file đồng thời hơn
 - hiện các lỗi lên mesage_box
 
