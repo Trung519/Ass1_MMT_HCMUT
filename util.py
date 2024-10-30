@@ -233,9 +233,9 @@ def convert_message_dict_to_byte(message):
 
 
 def handle_message_client(conn, message_dict, connecting_peers, list_progress):
-    print('--------------------')
-    print('MESSAGE FROM CLIENT', message_dict)
-    print('--------------------')
+    # print('--------------------')
+    # print('MESSAGE FROM CLIENT', message_dict)
+    # print('--------------------')
 
     if message_dict['type'] == EMesage_Type.HANDSHAKE.value:
         handle_message_request_handshake(
@@ -362,9 +362,9 @@ def handle_message_request_block(conn, message_dict, list_progress):
 
 
 def handle_message_server(client_socket, message_dict, peer, list_progress, message_request_block_queue):
-    print('---------------------------------')
-    print('MESSAGE FROM SERVER', message_dict)
-    print('---------------------------------')
+    # print('---------------------------------')
+    # print('MESSAGE FROM SERVER', message_dict)
+    # print('---------------------------------')
 
     if message_dict['type'] == EMesage_Type.HANDSHAKE.value:
         handle_message_reponse_handshake(

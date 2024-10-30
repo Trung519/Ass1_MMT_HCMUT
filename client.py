@@ -18,13 +18,19 @@ import pickle
 from tqdm import tqdm
 
 
-lock = Lock()
+lockConnect = Lock()
 stop_event = threading.Event()
 
 
-def add_message_request_queue(info_hash, queue):
-    pass
+def isDisconnect(peer):
+    with lockConnect:
+        return peer not in clientUi.connecting_peers
 
+
+def removePeer(peer):
+    with lockConnect:
+        clientUi.connecting_peers = [
+            item for item in clientUi.connecting_peers if item != peer]
 
 # # chọn 5 peer
 # def select_peer_per_ten_second():
@@ -178,10 +184,11 @@ def connect_to_peer(peer):
         client_socket.connect((peer['ip'], peer['port']))
 
         peer['isConnected'] = True
-
         message_handshake = clientUi.message_handshake
         message_request_block_queue = []
         while peer['isConnected']:
+            if isDisconnect(peer):
+                break
             # send mesage handshake
             if message_handshake['downloading_file'] != []:
                 message_handshake_byte = convert_message_dict_to_byte(
@@ -193,6 +200,8 @@ def connect_to_peer(peer):
                 response = b''
 
                 while not is_receive_full_response:
+                    if isDisconnect(peer):
+                        break
                     data = client_socket.recv(1024)
                     response += data
                     if response[-5:] == b'<END>':
@@ -204,6 +213,8 @@ def connect_to_peer(peer):
 
             # send message request
             if message_request_block_queue != []:
+                if isDisconnect(peer):
+                    break
                 message_request_block = message_request_block_queue.pop(0)
                 message_request_block_byte = convert_message_dict_to_byte(
                     message_request_block)
@@ -227,6 +238,8 @@ def connect_to_peer(peer):
         return client_socket
     except Exception as e:
         peer['isConnected'] = False
+        messagebox.showerror("Lỗi kết nối ", f"Could not connect to {
+                             peer['ip']}:{peer['port']}: {e}")
         print(f"Could not connect to {peer['ip']}:{peer['port']}: {e}")
         return None
 

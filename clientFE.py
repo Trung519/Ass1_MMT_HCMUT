@@ -60,6 +60,7 @@ class ClientUI:
 
 # Hàm để chuyển đổi menu
 
+
     def toggle_menu(self):
         def collapse_toggle_menu():
             toggle_menu_fm.destroy()
@@ -207,9 +208,9 @@ class ClientUI:
         # Hàm hiển thị nội dung Downloads
 
     def show_download_content(self):
-        # print(self.set_peers, 'set peers')
-        # print(self.connecting_peers, 'connecting peer')
-        # print(self.peers, 'peers')
+        print(self.set_peers, 'set peers')
+        print(self.connecting_peers, 'connecting peer')
+        print(self.peers, 'peers')
         # print('message handshake', self.message_handshake)
         self.update_progress = self.content_frame.after(
             1000, self.show_download_content)
@@ -307,6 +308,11 @@ class ClientUI:
 
             self.peers = [peer for peer in self.peers if peer['peer_id']
                           == peer_id and peer['info_hash'] == info_hash]
+            from client import lockConnect
+            with lockConnect:
+                self.set_peers = gen_set_peer(self.peers)
+                self.connecting_peers = gen_set_connecting_peer(self.set_peers)
+
             self.message_handshake['downloading_file'] = [message for message in self.message_handshake['downloading_file'] if not (
                 message['info_hash'] == info_hash and message['peer_id'] == peer_id)]
 
@@ -433,8 +439,12 @@ class ClientUI:
     def on_closing(self):
         # Hiển thị hộp thoại xác nhận
         if messagebox.askokcancel("Thoát", "Bạn có chắc chắn muốn thoát chương trình?"):
-            self.pause_all_progress(self.list_progress)
-            save_download_progress(self.list_progress)
+            try:
+                self.pause_all_progress(self.list_progress)
+                save_download_progress(self.list_progress)
+            except Exception as e:
+                messagebox.showerror(
+                    "Lỗi server", "Lỗi gửi đến server tracker")
             # self.root.destroy()  # Đóng cửa sổ và thoát chương trình
             sys.exit()  # Exit chương trình
 # Chạy vòng lặp chính của Tkinter
