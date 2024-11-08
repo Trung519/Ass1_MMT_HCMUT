@@ -112,6 +112,7 @@ def track_peer():
             "peer_id": peer["peer_id"],
             "ip": peer["ip"],
             "port": peer["port"],
+            "info_hash": info_hash,
             "speed": 0
         }
         for peer in peers if peer["event"] != "stopped" and peer["peer_id"] != peer_id

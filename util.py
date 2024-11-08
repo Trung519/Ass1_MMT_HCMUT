@@ -264,11 +264,8 @@ def handle_message_request_handshake(conn, message_dict, connecting_peers, list_
         type: 'HANDSHAKE',
         ip: string,
         port:number,
-        dowloading_file = [
-            {
+        file =  {
                 info_hash :string,
-                ip: string,
-                port: number
                 peer_id: string,
             }
         ]
@@ -282,14 +279,11 @@ def handle_message_request_handshake(conn, message_dict, connecting_peers, list_
         }
     ]
     '''
-    downloading_files = message_dict['downloading_file']
+    file = message_dict['file']
     if is_allow_connect(message_dict, connecting_peers):
-        list_progess = list_progress
-        list_downloading_info_hash = [item['info_hash']
-                                      for item in downloading_files]
         pieces_info = []
-        for progress in list_progess:
-            if progress['info_hash'] in list_downloading_info_hash:
+        for progress in list_progress:
+            if progress['info_hash'] == file['info_hash']:
                 pieces_info += [{
                     "info_hash": progress['info_hash'],
                     'peer_id': progress['peer_id'],
@@ -454,10 +448,10 @@ def handle_message_response_block(client_socket, message_dict, list_progress):
     block_size = message_dict['block_size']
     find_progress = next(
         (progress for progress in list_progress if progress['info_hash'] == info_hash and progress['peer_id'] == peer_id_client), None)
-    print('----------------------------')
-    print('PIECE INDEX', piece_index)
-    print('BLOCK INDEX', block_index)
-    print('----------------------------')
+    # print('----------------------------')
+    # print('PIECE INDEX', piece_index)
+    # print('BLOCK INDEX', block_index)
+    # print('----------------------------')
     if find_progress:
         file_path = find_progress['file_path']
         piece_length = find_progress['metainfo_file']['info']['piece_length']
@@ -472,6 +466,7 @@ def handle_message_response_block(client_socket, message_dict, list_progress):
             from client import clientUi
             clientUi.complete_download(find_progress)
             rename_file(file_path)
+            client_socket.close()
 
 
 def read_block(file_path, offset, block_size):

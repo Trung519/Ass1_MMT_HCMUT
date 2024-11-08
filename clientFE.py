@@ -175,7 +175,7 @@ class ClientUI:
 
                 # push downloadding_file to message_handshake
                 self.message_handshake['downloading_file'].append(
-                    {'info_hash': info_hash, 'peer_id': peer_id})
+                    {'info_hash': info_hash, 'peer_id': peer_id, 'isSent': False})
             else:
                 messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
                 print(f"Failed to download: {
@@ -284,7 +284,8 @@ class ClientUI:
             self.message_handshake['downloading_file'] = [message for message in self.message_handshake['downloading_file'] if not (
                 message['info_hash'] == info_hash and message['peer_id'] == peer_id)]
             time.sleep(1)
-            delete_file(file_path)
+            if file_path.endswith('.part'):
+                delete_file(file_path)
 
         else:
             messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
@@ -312,8 +313,9 @@ class ClientUI:
         if response.status_code == 200:
             # Giả sử server trả về JSON
 
-            self.peers = [peer for peer in self.peers if peer['peer_id']
-                          == peer_id and peer['info_hash'] == info_hash]
+            self.peers = [
+                peer for peer in self.peers if peer['info_hash'] != info_hash]
+
             self.set_peers = gen_set_peer(self.peers)
             self.connecting_peers = gen_set_connecting_peer(self.set_peers)
 
@@ -351,7 +353,7 @@ class ClientUI:
                 self.set_peers = gen_set_peer(self.peers)
                 self.connecting_peers = gen_set_connecting_peer(self.set_peers)
                 self.message_handshake['downloading_file'].append(
-                    {'info_hash': info_hash, 'peer_id': peer_id})
+                    {'info_hash': info_hash, 'peer_id': peer_id, 'isSent': False})
 
             else:
                 messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
@@ -390,6 +392,9 @@ class ClientUI:
         for progress in list_progress:
             if progress['event'] == 'started' or progress['event'] == 'completed':
                 self. pause_download(progress)
+                file_path = progress['file_path']
+                if file_path.endswith('.part'):
+                    delete_file(file_path)
 
     def show_upload_content(self):
         self.stop_update_progress()

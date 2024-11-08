@@ -73,7 +73,7 @@ def get_host_default_interface_ip():
 
 
 clientip = get_host_default_interface_ip()
-port = random.randint(6000, 7000)
+port = 6001
 server_ip = '127.0.0.1'  # Replace with your server's IP
 server_port = 5000       # Replace with your server's listening port (integer)
 clientUi = ClientUI(clientip, port)
@@ -161,65 +161,73 @@ def connect_to_peer(peer):
     try:
         print('-------------------')
         print('connect to this', peer)
+        print('downloading', clientUi.message_handshake)
         print('-------------------')
 
-        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        client_socket.connect((peer['ip'], peer['port']))
+        # client_socket.connect((peer['ip'], peer['port']))
 
         peer['isConnected'] = True
-        message_handshake = clientUi.message_handshake
-        message_request_block_queue = []
-        while peer['isConnected']:
-            if clientUi.isDisconnect(peer):
-                break
-            # send mesage handshake
-            if message_handshake['downloading_file'] != []:
-                message_handshake_byte = convert_message_dict_to_byte(
-                    message_handshake)
-                client_socket.sendall(message_handshake_byte)
-                client_socket.send(b'<END>')
-                message_handshake['downloading_file'] = []
-                is_receive_full_response = False
-                response = b''
+        downloading_files = clientUi.message_handshake['downloading_file']
 
-                while not is_receive_full_response:
-                    data = client_socket.recv(1024)
-                    response += data
-                    if response[-5:] == b'<END>':
-                        is_receive_full_response = True
-                        response = response[:-5]
-                message_dict = json.loads(response.decode('utf-8'))
-                handle_message_server(
-                    client_socket, message_dict, peer, clientUi.list_progress, message_request_block_queue)
+        while [item for item in downloading_files if not item['isSent']] != []:
+            threads = [
+                Thread(target=file_handshake, args=(downloading_file, peer)) for downloading_file in downloading_files if not downloading_file['isSent']]
 
-            # send message request
-            if message_request_block_queue != []:
-                print('CONNECTING PEER: ', clientUi.connecting_peers)
-                if clientUi.isDisconnect(peer):
-                    break
+            [t.start() for t in threads]
+            [t.join() for t in threads]
 
-                message_request_block = message_request_block_queue.pop(0)
-                message_request_block_byte = convert_message_dict_to_byte(
-                    message_request_block)
-                message_request_block_byte
-                client_socket.sendall(message_request_block_byte)
-                client_socket.send(b'<END>')
-                is_receive_full_response = False
-                response = b''
+        # while peer['isConnected']:
+        #     if clientUi.isDisconnect(peer):
+        #         break
+        #     # send mesage handshake
+        #     if message_handshake['downloading_file'] != []:
+        #         message_handshake_byte = convert_message_dict_to_byte(
+        #             message_handshake)
+        #         client_socket.sendall(message_handshake_byte)
+        #         client_socket.send(b'<END>')
+        #         message_handshake['downloading_file'] = []
+        #         is_receive_full_response = False
+        #         response = b''
 
-                while not is_receive_full_response:
-                    data = client_socket.recv(1024)
-                    response += data
-                    if response[-5:] == b'<END>':
-                        is_receive_full_response = True
-                        response = response[:-5]
+        #         while not is_receive_full_response:
+        #             data = client_socket.recv(1024)
+        #             response += data
+        #             if response[-5:] == b'<END>':
+        #                 is_receive_full_response = True
+        #                 response = response[:-5]
+        #         message_dict = json.loads(response.decode('utf-8'))
+        #         handle_message_server(
+        #             client_socket, message_dict, peer, clientUi.list_progress, message_request_block_queue)
 
-                message_dict = pickle.loads(response)
-                handle_message_server(
-                    client_socket, message_dict, peer, clientUi.list_progress, message_request_block_queue)
-        print('END CONNECT')
-        return client_socket
+        #     # send message request
+        #     if message_request_block_queue != []:
+        #         print('CONNECTING PEER: ', clientUi.connecting_peers)
+        #         if clientUi.isDisconnect(peer):
+        #             break
+
+        #         message_request_block = message_request_block_queue.pop(0)
+        #         message_request_block_byte = convert_message_dict_to_byte(
+        #             message_request_block)
+        #         message_request_block_byte
+        #         client_socket.sendall(message_request_block_byte)
+        #         client_socket.send(b'<END>')
+        #         is_receive_full_response = False
+        #         response = b''
+
+        #         while not is_receive_full_response:
+        #             data = client_socket.recv(1024)
+        #             response += data
+        #             if response[-5:] == b'<END>':
+        #                 is_receive_full_response = True
+        #                 response = response[:-5]
+
+        #         message_dict = pickle.loads(response)
+        #         handle_message_server(
+        #             client_socket, message_dict, peer, clientUi.list_progress, message_request_block_queue)
+        # print('END CONNECT')
+        # return client_socket
     except Exception as e:
         peer['isConnected'] = False
         messagebox.showerror("Lỗi kết nối ", f"Could not connect to {
@@ -281,12 +289,13 @@ def server_process():
 def client_process():
     # Create "threadnum" of Thread to parallelly connnect
     while True:
-        # print('==================')
-        # print(clientUi.connection_peers, 'connectiong peers')
-        # print('==================')
+        print('==================')
+        print('select peer')
+        print(clientUi.connecting_peers, 'connectiong peers')
+        print('==================')
 
         # Đặt stop_event cho luồng dừng lại sau 10 giây
-        # stop_event.clear()
+        stop_event.clear()
         threads = [Thread(target=connect_to_peer, args=(peer,))
                    for peer in clientUi.connecting_peers if not peer['isConnected']]
 
@@ -300,6 +309,75 @@ def client_process():
         clientUi.connecting_peers = gen_set_connecting_peer(clientUi.set_peers)
         # Chờ các luồng kết thúc
         [t.join() for t in threads]
+
+
+def file_handshake(downloading_file, peer):
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    client_socket.connect((peer['ip'], peer['port']))
+    message_handshake = {
+        "type": EMesage_Type.HANDSHAKE.value,
+        "ip": clientUi.ip,
+        "port": clientUi.port,
+        "file": {
+            "info_hash": downloading_file['info_hash'],
+            "peer_id": downloading_file['peer_id']
+        }
+    }
+    message_request_block_queue = []
+    progress = [item for item in clientUi.list_progress if item['peer_id'] ==
+                downloading_file['peer_id'] and item['info_hash'] == downloading_file['info_hash']]
+
+    while progress[0]['event'] != 'completed':
+        if clientUi.isDisconnect(peer):
+            break
+        if message_handshake != {}:
+            message_handshake_byte = convert_message_dict_to_byte(
+                message_handshake)
+            client_socket.sendall(message_handshake_byte)
+            client_socket.send(b'<END>')
+            message_handshake = {}
+            is_receive_full_response = False
+            response = b''
+            while not is_receive_full_response:
+                data = client_socket.recv(1024)
+                response += data
+                if response[-5:] == b'<END>':
+                    is_receive_full_response = True
+                    response = response[:-5]
+            message_dict = json.loads(response.decode('utf-8'))
+            if message_dict['type'] != EMesage_Type.REJECT.value:
+                downloading_file['isSent'] = True
+            handle_message_server(
+                client_socket, message_dict, peer, clientUi.list_progress, message_request_block_queue)
+# send message request
+        if message_request_block_queue != []:
+            if clientUi.isDisconnect(peer):
+                break
+            message_request_block = message_request_block_queue.pop(0)
+            message_request_block_byte = convert_message_dict_to_byte(
+                message_request_block)
+            message_request_block_byte
+            client_socket.sendall(message_request_block_byte)
+            client_socket.send(b'<END>')
+            is_receive_full_response = False
+            response = b''
+
+            while not is_receive_full_response:
+                data = client_socket.recv(1024)
+                response += data
+                if response[-5:] == b'<END>':
+                    is_receive_full_response = True
+                    response = response[:-5]
+
+            message_dict = pickle.loads(response)
+            handle_message_server(
+                client_socket, message_dict, peer, clientUi.list_progress, message_request_block_queue)
+    if progress[0]['event'] == 'completed':
+        clientUi.message_handshake['downloading_file'] = [
+            item for item in clientUi.message_handshake['downloading_file'] if item['peer_id'] != progress[0]['peer_id']]
+    print('END CONNECT')
+    return client_socket
 
 
 if __name__ == "__main__":
