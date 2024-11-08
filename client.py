@@ -22,11 +22,6 @@ stop_event = threading.Event()
 
 
 # # chọn 5 peer
-# def select_peer_per_ten_second():
-#     while True:
-#         clientUi.set_peers = gen_set_peer(clientUi.peers)
-#         clientUi.connecting_peers = gen_set_connecting_peer(clientUi.set_peers)
-#         time.sleep(10)
 
 
 # refresh peers
@@ -291,7 +286,7 @@ def client_process():
         # print('==================')
 
         # Đặt stop_event cho luồng dừng lại sau 10 giây
-        stop_event.clear()
+        # stop_event.clear()
         threads = [Thread(target=connect_to_peer, args=(peer,))
                    for peer in clientUi.connecting_peers if not peer['isConnected']]
 
@@ -316,21 +311,3 @@ if __name__ == "__main__":
     # Thread(target=select_peer_per_ten_second, args=(), daemon=True).start()
     Thread(target=refresh_peers_per_30_minutes, args=(), daemon=True).start()
     clientUi.run()
-    # # Ask the user if they want to upload or download
-    # action = input(
-    #     "Do you want to upload or download a file? (upload/download): ").lower()
-
-    # if action == "upload":
-    #     start_upload_gui()
-
-    # elif action == "download":
-    #     info_hash = input("Enter info_hash of the file you want to download: ")
-    #     event = input("Enter event (started/stopped/completed): ").lower()
-
-    #     if event in ['started', 'stopped', 'completed']:
-    #         download_file(info_hash, event)
-    #     else:
-    #         print("Invalid event. Please enter 'started', 'stopped', or 'completed'.")
-
-    # else:
-    #     print("Invalid action. Please enter 'upload' or 'download'.")
