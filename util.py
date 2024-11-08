@@ -180,6 +180,14 @@ def genProgress(file_path, isUpload):
     return progress
 
 
+def genMetainfoFolder(folder_path):
+    file_paths = []
+    for root, _, files in os.walk(folder_path):
+        for file in files:
+            file_paths.append(os.path.join(root, file))
+    return file_paths
+
+
 def removeByPeerId(list_progress, peer_id):
     return list(filter(lambda item: item['peer_id'] != peer_id, list_progress))
 

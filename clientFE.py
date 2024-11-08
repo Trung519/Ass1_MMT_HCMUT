@@ -49,7 +49,8 @@ class ClientUI:
         self.update_progress = None
 
         for progress in self.list_progress:
-            self.complete_download(progress)
+            if (progress['event'] == 'completed'):
+                self.complete_download(progress)
 
         # send to tracker all completed file
 
@@ -60,7 +61,6 @@ class ClientUI:
 
 
 # Hàm để chuyển đổi menu
-
 
     def toggle_menu(self):
         def collapse_toggle_menu():
@@ -452,7 +452,12 @@ class ClientUI:
                 print(f"Error during download: {e}")
 
     def select_folder(self):
-        pass
+        folder_path = filedialog.askdirectory()
+        if folder_path:
+            peer_id = str(uuid.uuid4())
+            body = genMetainfoFolder(folder_path)
+            print(body)
+            print(folder_path)
 
     def on_closing(self):
         # Hiển thị hộp thoại xác nhận
