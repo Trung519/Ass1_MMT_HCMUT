@@ -518,8 +518,10 @@ class ClientUI:
             }
         }
         isSent = False
-        while progress['event'] != 'completed':
+        while progress['event'] == 'started':
             if self.isDisconnect(peer):
+                break
+            if progress['event'] != 'started':
                 break
             if not isSent:
                 message_handshake_byte = convert_message_dict_to_byte(
@@ -541,6 +543,8 @@ class ClientUI:
 
             if message_request_block_queue != []:
                 if self.isDisconnect(peer):
+                    break
+                if progress['event'] != 'started':
                     break
                 message_request_block = message_request_block_queue.pop(0)
                 message_request_block_byte = convert_message_dict_to_byte(
