@@ -224,12 +224,12 @@ def gen_set_peer(peers):
         # peer = {ip, port, peer_id, speed }
         ip_port = (peer["ip"], peer["port"])
         if ip_port not in seen_ip_port:
-            peer['isConnected'] = False
+            # peer['isConnected'] = False
             unique_peers.append({
                 "ip": peer['ip'],
                 'port': peer['port'],
                 "speed": peer['speed'],
-                "isConnected": False,
+                # "isConnected": False,
             })
             seen_ip_port.add(ip_port)
     # print(unique_peers, 'unique_peers')
@@ -315,7 +315,7 @@ def is_allow_connect(message_dict, connecting_peers):
             "ip": message_dict['ip'],
             "port": message_dict['port'],
             "speed": 0,
-            'isConnected': False
+            # 'isConnected': False
         }]
     for peer in connecting_peers:
         if peer['ip'] == message_dict['ip'] and peer['port'] == message_dict['port']:
@@ -382,7 +382,7 @@ def handle_message_server(client_socket, message_dict, peer, list_progress, mess
     else:
         print('type khong xac dinh')
         client_socket.close()
-        peer['isConnected'] = False
+        # peer['isConnected'] = False
 
 
 def handle_message_reponse_handshake(client_socket, message_dict, list_progress, message_request_block_queue):
@@ -422,7 +422,7 @@ def handle_message_reponse_handshake(client_socket, message_dict, list_progress,
 
 
 def handle_message_response_reject(client_socket, message_dict, peer):
-    peer['isConnected'] = False
+    # peer['isConnected'] = False
     client_socket.close()
 
 

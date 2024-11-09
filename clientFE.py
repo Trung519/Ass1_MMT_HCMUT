@@ -10,6 +10,7 @@ import uuid
 import math
 from message_type import EMesage_Type
 import time
+from threading import Thread
 
 
 class ClientUI:
@@ -61,6 +62,7 @@ class ClientUI:
 
 
 # Hàm để chuyển đổi menu
+
 
     def toggle_menu(self):
         def collapse_toggle_menu():
@@ -164,25 +166,6 @@ class ClientUI:
 
         url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={
             self.port}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={self.ip}"
-        try:
-            response = requests.get(url)
-            if response.status_code == 200:
-                messagebox.showinfo(
-                    "Download file", 'File đang được tải xuống vui lòng kiểm tra trong Downloads & Uploads')
-            # Giả sử server trả về JSON
-                response_data = response.json()  # Chuyển đổi thành đối tượng Python
-                self.peers += response_data.get('Peers', [])
-
-                # push downloadding_file to message_handshake
-                self.message_handshake['downloading_file'].append(
-                    {'info_hash': info_hash, 'peer_id': peer_id})
-            else:
-                messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
-                print(f"Failed to download: {
-                      response.status_code} - {response.text}")
-        except Exception as e:
-            messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
-            print(f"Error during download: {e}")
         length = metainfo['info']['length']
         for i in range(num_piece):
             rest = length - i*piece_length
@@ -205,6 +188,30 @@ class ClientUI:
         }
         # luu tien trinh upload
         self.list_progress = [progress] + self.list_progress
+
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                messagebox.showinfo(
+                    "Download file", 'File đang được tải xuống vui lòng kiểm tra trong Downloads & Uploads')
+            # Giả sử server trả về JSON
+                response_data = response.json()  # Chuyển đổi thành đối tượng Python
+                self.peers += response_data.get('Peers', [])
+                self.set_peers = gen_set_peer(self.peers)
+                self.connecting_peers = gen_set_connecting_peer(self.set_peers)
+                Thread(target=self.handle_download_file,
+                       args=(progress,), daemon=True).start()
+
+                # push downloadding_file to message_handshake
+                self.message_handshake['downloading_file'].append(
+                    {'info_hash': info_hash, 'peer_id': peer_id})
+            else:
+                messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
+                print(f"Failed to download: {
+                      response.status_code} - {response.text}")
+        except Exception as e:
+            messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
+            print(f"Error during download: {e}")
 
         # Hàm hiển thị nội dung Downloads
 
@@ -484,6 +491,17 @@ class ClientUI:
                     return False  # Có peer với IP và port giống -> không ngắt kết nối
             return True  # Không có peer nào trùng IP và port -> ngắt kết nối
 # Chạy vòng lặp chính của Tkinter
+
+    def handle_download_file(self, progress):
+        # print('CONNECTING PEER', self.connecting_peers)
+        threads = [Thread(target=self.connect_to_peer, args=(
+            progress, peer)) for peer in self.connecting_peers]
+        [t.start() for t in threads]
+
+    def connect_to_peer(self, progress, peer):
+        print('thread')
+        # print('PROGRESS', progress)
+        # print('PEER', peer)
 
     def run(self):
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)

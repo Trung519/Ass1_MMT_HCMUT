@@ -101,23 +101,40 @@ def track_peer():
     peers = list(tracking_peer_collection.find(
         {"info_hash": info_hash}).sort("uploaded", -1))
 
-    print("peer has hash info", peers)
+    # print('PORT', port)
+    # print('IP', ip)
     # Tính toán số lượng Complete và Incomplete
     complete_count = sum(1 for peer in peers if peer['left'] == 0)
     incomplete_count = sum(1 for peer in peers if peer['left'] != 0)
 
     # Lọc danh sách peer có event khác 'stopped'
-    active_peers = [
-        {
+    active_peers = []
+    for peer in peers:
+        if peer['event'] == 'stopped':
+            continue
+        if peer['peer_id'] == peer_id:
+            continue
+
+        if str(peer['port']) == str(port) and peer['ip'] == ip:
+            continue
+        active_peers += [{
             "peer_id": peer["peer_id"],
             "ip": peer["ip"],
             "port": peer["port"],
             "info_hash": info_hash,
-            "speed": 0
-        }
-        for peer in peers if peer["event"] != "stopped" and peer["peer_id"] != peer_id
-        and peer['port'] != port
-    ]
+            "speed": 0}]
+
+    # active_peers = [
+    #     {
+    #         "peer_id": peer["peer_id"],
+    #         "ip": peer["ip"],
+    #         "port": peer["port"],
+    #         "info_hash": info_hash,
+    #         "speed": 0
+    #     }
+    #     for peer in peers if peer["event"] != "stopped" and peer["peer_id"] != peer_id
+    #     and (peer['port'] != port or peer['ip'] != ip)
+    # ]
     return jsonify({
         "Complete": complete_count,
         "Incomplete": incomplete_count,

@@ -382,7 +382,7 @@ def select_peer_per_ten_second():
     while True:
         clientUi.set_peers = gen_set_peer(clientUi.peers)
         clientUi.connecting_peers = gen_set_connecting_peer(clientUi.set_peers)
-        print('CONNECTING PEER', clientUi.connecting_peers)
+        # print('CONNECTING PEER', clientUi.connecting_peers)
         time.sleep(10)
 
 
