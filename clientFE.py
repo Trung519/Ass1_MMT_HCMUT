@@ -64,6 +64,7 @@ class ClientUI:
 
 # Hàm để chuyển đổi menu
 
+
     def toggle_menu(self):
         def collapse_toggle_menu():
             toggle_menu_fm.destroy()
@@ -281,8 +282,8 @@ class ClientUI:
         if response.status_code == 200:
             # xoa peers tham gia tai file nay
             if progress['event'] == 'started' or progress['event'] == 'completed':
-                self.peers = [peer for peer in self.peers if peer['peer_id']
-                              == peer_id and peer['info_hash'] == info_hash]
+                self.peers = [
+                    peer for peer in self.peers if peer['client_id'] != peer_id]
                 self.set_peers = gen_set_peer(self.peers)
                 self.connecting_peers = gen_set_connecting_peer(self.set_peers)
             # xoa tien trinh
@@ -321,7 +322,7 @@ class ClientUI:
             # Giả sử server trả về JSON
 
             self.peers = [
-                peer for peer in self.peers if peer['info_hash'] != info_hash]
+                peer for peer in self.peers if peer['client_id'] != peer_id]
 
             self.set_peers = gen_set_peer(self.peers)
             self.connecting_peers = gen_set_connecting_peer(self.set_peers)
@@ -359,6 +360,8 @@ class ClientUI:
                 self.peers += response_data.get('Peers', [])
                 self.set_peers = gen_set_peer(self.peers)
                 self.connecting_peers = gen_set_connecting_peer(self.set_peers)
+                Thread(target=self.handle_download_file,
+                       args=(progress,), daemon=True).start()
                 self.message_handshake['downloading_file'].append(
                     {'info_hash': info_hash, 'peer_id': peer_id, })
 
@@ -399,9 +402,9 @@ class ClientUI:
         for progress in list_progress:
             if progress['event'] == 'started' or progress['event'] == 'completed':
                 self. pause_download(progress)
-                file_path = progress['file_path']
-                if file_path.endswith('.part'):
-                    delete_file(file_path)
+                # file_path = progress['file_path']
+                # if file_path.endswith('.part'):
+                #     delete_file(file_path)
 
     def show_upload_content(self):
         self.stop_update_progress()
@@ -501,7 +504,7 @@ class ClientUI:
     def connect_to_peer(self, progress, peer):
         # print('thread')
         # print('PROGRESS', progress)
-        # print('PEER', peer)
+        # print('PEER', self.peers)
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect((peer['ip'], peer['port']))
         message_request_block_queue = []
@@ -534,7 +537,7 @@ class ClientUI:
                         response = response[:-5]
                 message_dict = json.loads(response.decode('utf-8'))
                 handle_message_server(
-                    client_socket, message_dict, peer, self.list_progress, message_request_block_queue)
+                    client_socket, message_dict, peer, progress, message_request_block_queue)
 
             if message_request_block_queue != []:
                 if self.isDisconnect(peer):
@@ -557,7 +560,7 @@ class ClientUI:
 
                 message_dict = pickle.loads(response)
                 handle_message_server(
-                    client_socket, message_dict, peer, self.list_progress, message_request_block_queue)
+                    client_socket, message_dict, peer, progress, message_request_block_queue)
 
         print('END CONNECT')
         return client_socket

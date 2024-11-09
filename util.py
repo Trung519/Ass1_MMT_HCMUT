@@ -366,26 +366,26 @@ def handle_message_request_block(conn, message_dict, list_progress):
         conn.send(b"<END>")
 
 
-def handle_message_server(client_socket, message_dict, peer, list_progress, message_request_block_queue):
+def handle_message_server(client_socket, message_dict, peer, progress, message_request_block_queue):
     # print('---------------------------------')
     # print('MESSAGE FROM SERVER', message_dict)
     # print('---------------------------------')
 
     if message_dict['type'] == EMesage_Type.HANDSHAKE.value:
         handle_message_reponse_handshake(
-            client_socket, message_dict, list_progress, message_request_block_queue)
+            client_socket, message_dict, progress, message_request_block_queue)
     elif message_dict['type'] == EMesage_Type.REJECT.value:
         handle_message_response_reject(client_socket, message_dict, peer)
     elif message_dict['type'] == EMesage_Type.BLOCK.value:
         handle_message_response_block(
-            client_socket, message_dict, list_progress)
+            client_socket, message_dict, progress)
     else:
         print('type khong xac dinh')
         client_socket.close()
         # peer['isConnected'] = False
 
 
-def handle_message_reponse_handshake(client_socket, message_dict, list_progress, message_request_block_queue):
+def handle_message_reponse_handshake(client_socket, message_dict, progress, message_request_block_queue):
     '''
     message_dict = {
         type: 'HANDSHAKE',
@@ -398,27 +398,26 @@ def handle_message_reponse_handshake(client_socket, message_dict, list_progress,
         ]
     }
     '''
-    for progress in list_progress:
-        pieces = progress['pieces']
-        for piece_info in message_dict['pieces_info']:
-            if progress['info_hash'] != piece_info['info_hash']:
-                continue
-            piece_index_server = piece_info['piece_index']
-            peer_id_server = piece_info['peer_id']
-            piece_client = pieces[piece_index_server]
-            if not piece_client['isDownloaded']:
-                blocks = piece_client['blocks']
-                message_request_block_queue += [
-                    {
-                        "peer_id_client": progress['peer_id'],
-                        "peer_id_server": peer_id_server,
-                        "info_hash": progress['info_hash'],
-                        "piece_index": piece_index_server,
-                        "offset": block['offset'],
-                        'block_index': block['block_index'],
-                        'block_size': block['block_size'],
-                        "type": EMesage_Type.BLOCK.value,
-                    }for block in blocks if not block['isDownloaded']]
+    pieces = progress['pieces']
+    for piece_info in message_dict['pieces_info']:
+        # if progress['info_hash'] != piece_info['info_hash']:
+        #     continue
+        piece_index_server = piece_info['piece_index']
+        peer_id_server = piece_info['peer_id']
+        piece_client = pieces[piece_index_server]
+        if not piece_client['isDownloaded']:
+            blocks = piece_client['blocks']
+            message_request_block_queue += [
+                {
+                    "peer_id_client": progress['peer_id'],
+                    "peer_id_server": peer_id_server,
+                    "info_hash": progress['info_hash'],
+                    "piece_index": piece_index_server,
+                    "offset": block['offset'],
+                    'block_index': block['block_index'],
+                    'block_size': block['block_size'],
+                    "type": EMesage_Type.BLOCK.value,
+                }for block in blocks if not block['isDownloaded']]
 
 
 def handle_message_response_reject(client_socket, message_dict, peer):
@@ -426,7 +425,7 @@ def handle_message_response_reject(client_socket, message_dict, peer):
     client_socket.close()
 
 
-def handle_message_response_block(client_socket, message_dict, list_progress):
+def handle_message_response_block(client_socket, message_dict, progress):
     '''
     message_dict = {
         type: 'BLOCK',
@@ -446,25 +445,24 @@ def handle_message_response_block(client_socket, message_dict, list_progress):
     block_index = message_dict['block_index']
     offset = message_dict['offset']
     block_size = message_dict['block_size']
-    find_progress = next(
-        (progress for progress in list_progress if progress['info_hash'] == info_hash and progress['peer_id'] == peer_id_client), None)
+
     # print('----------------------------')
     # print('PIECE INDEX', piece_index)
     # print('BLOCK INDEX', block_index)
     # print('----------------------------')
-    if find_progress:
-        file_path = find_progress['file_path']
-        piece_length = find_progress['metainfo_file']['info']['piece_length']
+    if progress:
+        file_path = progress['file_path']
+        piece_length = progress['metainfo_file']['info']['piece_length']
         write_block_to_file(
             file_path, message_dict['data'], piece_index * piece_length + offset, block_size)
-        pieces = find_progress['pieces']
+        pieces = progress['pieces']
         block = pieces[piece_index]["blocks"][block_index]
         block['isDownloaded'] = True
-        find_progress['downloaded'] += block['block_size']
-        find_progress['left'] -= block['block_size']
-        if find_progress['downloaded'] >= find_progress['metainfo_file']['info']['length']:
+        progress['downloaded'] += block['block_size']
+        progress['left'] -= block['block_size']
+        if progress['downloaded'] >= progress['metainfo_file']['info']['length']:
             from client import clientUi
-            clientUi.complete_download(find_progress)
+            clientUi.complete_download(progress)
             rename_file(file_path)
             client_socket.close()
 

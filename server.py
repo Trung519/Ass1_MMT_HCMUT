@@ -119,6 +119,7 @@ def track_peer():
             continue
         active_peers += [{
             "peer_id": peer["peer_id"],
+            "client_id": peer_id,
             "ip": peer["ip"],
             "port": peer["port"],
             "info_hash": info_hash,
@@ -132,7 +133,7 @@ def track_peer():
     #         "info_hash": info_hash,
     #         "speed": 0
     #     }
-    #     for peer in peers if peer["event"] != "stopped" and peer["peer_id"] != peer_id
+#     for peer in peers if peer["event"] != "stopped" and peer["peer_id"] != peer_id
     #     and (peer['port'] != port or peer['ip'] != ip)
     # ]
     return jsonify({
