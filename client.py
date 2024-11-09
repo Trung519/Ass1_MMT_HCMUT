@@ -73,7 +73,7 @@ def get_host_default_interface_ip():
 
 
 clientip = get_host_default_interface_ip()
-port = 6001
+port = random.randint(6000, 7000)
 server_ip = '127.0.0.1'  # Replace with your server's IP
 server_port = 5000       # Replace with your server's listening port (integer)
 clientUi = ClientUI(clientip, port)
@@ -171,12 +171,11 @@ def connect_to_peer(peer):
         peer['isConnected'] = True
         downloading_files = clientUi.message_handshake['downloading_file']
 
-        while [item for item in downloading_files if not item['isSent']] != []:
-            threads = [
-                Thread(target=file_handshake, args=(downloading_file, peer)) for downloading_file in downloading_files if not downloading_file['isSent']]
+        threads = [
+            Thread(target=file_handshake, args=(downloading_file, peer)) for downloading_file in downloading_files]
 
-            [t.start() for t in threads]
-            [t.join() for t in threads]
+        [t.start() for t in threads]
+        [t.join() for t in threads]
 
         # while peer['isConnected']:
         #     if clientUi.isDisconnect(peer):
@@ -346,8 +345,7 @@ def file_handshake(downloading_file, peer):
                     is_receive_full_response = True
                     response = response[:-5]
             message_dict = json.loads(response.decode('utf-8'))
-            if message_dict['type'] != EMesage_Type.REJECT.value:
-                downloading_file['isSent'] = True
+
             handle_message_server(
                 client_socket, message_dict, peer, clientUi.list_progress, message_request_block_queue)
 # send message request
@@ -380,12 +378,20 @@ def file_handshake(downloading_file, peer):
     return client_socket
 
 
+def select_peer_per_ten_second():
+    while True:
+        clientUi.set_peers = gen_set_peer(clientUi.peers)
+        clientUi.connecting_peers = gen_set_connecting_peer(clientUi.set_peers)
+        print('CONNECTING PEER', clientUi.connecting_peers)
+        time.sleep(10)
+
+
 if __name__ == "__main__":
     print(f"Listening on: {clientip}:{port}")
 
     # Start the peer server in a thread
     Thread(target=server_process, args=(), daemon=True).start()
-    Thread(target=client_process, args=(), daemon=True).start()
-    # Thread(target=select_peer_per_ten_second, args=(), daemon=True).start()
+    # Thread(target=client_process, args=(), daemon=True).start()
+    Thread(target=select_peer_per_ten_second, args=(), daemon=True).start()
     Thread(target=refresh_peers_per_30_minutes, args=(), daemon=True).start()
     clientUi.run()

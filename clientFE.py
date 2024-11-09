@@ -175,7 +175,7 @@ class ClientUI:
 
                 # push downloadding_file to message_handshake
                 self.message_handshake['downloading_file'].append(
-                    {'info_hash': info_hash, 'peer_id': peer_id, 'isSent': False})
+                    {'info_hash': info_hash, 'peer_id': peer_id})
             else:
                 messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
                 print(f"Failed to download: {
@@ -353,7 +353,7 @@ class ClientUI:
                 self.set_peers = gen_set_peer(self.peers)
                 self.connecting_peers = gen_set_connecting_peer(self.set_peers)
                 self.message_handshake['downloading_file'].append(
-                    {'info_hash': info_hash, 'peer_id': peer_id, 'isSent': False})
+                    {'info_hash': info_hash, 'peer_id': peer_id, })
 
             else:
                 messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
