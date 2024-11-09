@@ -11,6 +11,7 @@ import math
 from message_type import EMesage_Type
 import time
 from threading import Thread
+import socket
 
 
 class ClientUI:
@@ -62,7 +63,6 @@ class ClientUI:
 
 
 # Hàm để chuyển đổi menu
-
 
     def toggle_menu(self):
         def collapse_toggle_menu():
@@ -499,9 +499,68 @@ class ClientUI:
         [t.start() for t in threads]
 
     def connect_to_peer(self, progress, peer):
-        print('thread')
+        # print('thread')
         # print('PROGRESS', progress)
         # print('PEER', peer)
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_socket.connect((peer['ip'], peer['port']))
+        message_request_block_queue = []
+        message_handshake = {
+            "type": EMesage_Type.HANDSHAKE.value,
+            "ip": self.ip,
+            "port": self.port,
+            "file": {
+                "info_hash": progress['info_hash'],
+                "peer_id": progress['peer_id']
+            }
+        }
+        isSent = False
+        while progress['event'] != 'completed':
+            if self.isDisconnect(peer):
+                break
+            if not isSent:
+                message_handshake_byte = convert_message_dict_to_byte(
+                    message_handshake)
+                client_socket.sendall(message_handshake_byte)
+                client_socket.send(b'<END>')
+                isSent = True
+                is_receive_full_response = False
+                response = b''
+                while not is_receive_full_response:
+                    data = client_socket.recv(1024)
+                    response += data
+                    if response[-5:] == b'<END>':
+                        is_receive_full_response = True
+                        response = response[:-5]
+                message_dict = json.loads(response.decode('utf-8'))
+                handle_message_server(
+                    client_socket, message_dict, peer, self.list_progress, message_request_block_queue)
+
+            if message_request_block_queue != []:
+                if self.isDisconnect(peer):
+                    break
+                message_request_block = message_request_block_queue.pop(0)
+                message_request_block_byte = convert_message_dict_to_byte(
+                    message_request_block)
+                message_request_block_byte
+                client_socket.sendall(message_request_block_byte)
+                client_socket.send(b'<END>')
+                is_receive_full_response = False
+                response = b''
+
+                while not is_receive_full_response:
+                    data = client_socket.recv(1024)
+                    response += data
+                    if response[-5:] == b'<END>':
+                        is_receive_full_response = True
+                        response = response[:-5]
+
+                message_dict = pickle.loads(response)
+                handle_message_server(
+                    client_socket, message_dict, peer, self.list_progress, message_request_block_queue)
+
+        print('END CONNECT')
+        return client_socket
 
     def run(self):
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
