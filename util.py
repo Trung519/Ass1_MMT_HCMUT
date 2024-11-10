@@ -193,13 +193,14 @@ def genProgressFolder(folder_path, isUpload):
         for i in range(num_piece):
             rest = length - i*piece_length
             blocks = split_piece_into_blocks(
-                (min(rest, piece_length)), isUpload)
+                min(rest, piece_length), isUpload)
             pieces_info.append({
                 "piece_index": i,
                 "isDownloaded": isUpload,
                 "blocks": blocks
             })
         file['pieces_info'] = pieces_info
+        file['isDownloaded'] = isUpload
 
     progress = {
         "metainfo_folder": metainfo_folder,
@@ -257,7 +258,6 @@ def insert_before_extension(file_name, idx):
     # Chèn chuỗi trước phần mở rộng
     new_file_name = file_name[:dot_index] + \
         f"({idx})" + file_name[dot_index:]
-
     return new_file_name
 
 

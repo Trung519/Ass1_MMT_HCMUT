@@ -149,8 +149,8 @@ def track_peer():
 def add_metainfo_file():
     data = request.json
 
-    print('data')
-    print(data)
+    # print('data')
+    # print(data)
 
     # Kiểm tra xem 'info' có trong request hay không
     if 'info' not in data:

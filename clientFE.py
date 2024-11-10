@@ -64,6 +64,7 @@ class ClientUI:
 
 # Hàm để chuyển đổi menu
 
+
     def toggle_menu(self):
         def collapse_toggle_menu():
             toggle_menu_fm.destroy()
@@ -127,9 +128,89 @@ class ClientUI:
             file_label.pack(side=LEFT)
 
             # Thêm nút Download
-            download_button = Button(file_frame, text="Download", font=(
-                "Arial", 10), command=lambda m=metainfo: self. download_metainfo(m))
+
+            if 'files' in metainfo['info']:
+                download_button = Button(file_frame, text="Download", font=(
+                    "Arial", 10), command=lambda m=metainfo: self. download_metainfo_folder(m))
+            else:
+                download_button = Button(file_frame, text="Download", font=(
+                    "Arial", 10), command=lambda m=metainfo: self. download_metainfo(m))
+
             download_button.pack(side=RIGHT, padx=10)
+
+    def download_metainfo_folder(self, metainfo):
+        peer_id = str(uuid.uuid4())
+        info_hash = metainfo['info_hash']
+        name_folder_download = metainfo['info']['name']
+        isSameName = True
+        idxFolder = 1
+        while isSameName:
+            isSameName = False
+            i = 0
+            while i < len(self.list_progress):
+                item = self.list_progress[i]
+                folder_name_proress = item['metainfo_folder']['info']['name']
+
+                if folder_name_proress == name_folder_download:
+                    name_folder_download = name_folder_download + \
+                        str(idxFolder)
+                    idxFolder += 1
+                    isSameName = True
+                    break
+                i += 1
+        metainfo['info']['name'] = name_folder_download
+        left = metainfo['info']['length']
+        uploaded = 0
+        downloaded = 0
+        event = 'started'
+        url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={
+            self.port}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={self.ip}"
+
+        for file in metainfo['info']['files']:
+            piece_length = file['piece_length']
+            length = file['length']
+            num_piece = math.ceil(length/piece_length)
+            pieces_info = []
+            for i in range(num_piece):
+                rest = length - i * piece_length
+                blocks = split_piece_into_blocks(
+                    min(rest, piece_length), False)
+                pieces_info.append({
+                    "piece_index": i,
+                    "isDownloaded": False,
+                    "blocks": blocks
+                })
+            file['pieces_info'] = pieces_info
+            file['isDownloaded'] = False
+
+        progress = {
+            "metainfo_folder": metainfo,
+            "folder_path": f'repo/{metainfo['info']['name']}',
+            "peer_id": peer_id,
+            "info_hash": info_hash,
+            "uploaded": uploaded,
+            "downloaded": downloaded,
+            "left": metainfo['info']['length'],
+            "event": 'started'
+        }
+        self.list_progress = [progress] + self.list_progress
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                messagebox.showinfo(
+                    "Download folder", "File đang được tải xuống vui lòng kiểm tra trong Downloads & Uploads")
+                response_data = response.json()
+                self.peers += response_data.get('Peers', [])
+                self.set_peers = gen_set_peer(self.peers)
+                self.connecting_peers = gen_set_connecting_peer(self.set_peers)
+                Thread(target=self.handle_download_folder,
+                       args=(progress,), daemon=True).start()
+            else:
+                messagebox.showerror(
+                    "Lỗi hệ thống", "Lỗi trong quá trình tải folder")
+        except Exception as e:
+            messagebox.showerror(
+                "Lỗi hệ thống", "Lỗi trong quá trình tải folder")
 
     def download_metainfo(self, metainfo):
         peer_id = str(uuid.uuid4())
@@ -487,6 +568,7 @@ class ClientUI:
             progress = genProgressFolder(folder_path, True)
             progress['peer_id'] = peer_id
             info_hash = body['info_hash']
+            progress['info_hash'] = info_hash
             uploaded = progress['uploaded']
             downloaded = progress['downloaded']
             left = progress['left']
@@ -532,11 +614,20 @@ class ClientUI:
             return True  # Không có peer nào trùng IP và port -> ngắt kết nối
 # Chạy vòng lặp chính của Tkinter
 
+    def handle_download_folder(self, progress):
+        threads = [Thread(target=self.connect_to_peer_download_folder, args=(
+            progress, peer)) for peer in self.connecting_peers]
+        [t.start() for t in threads]
+
     def handle_download_file(self, progress):
         # print('CONNECTING PEER', self.connecting_peers)
         threads = [Thread(target=self.connect_to_peer, args=(
             progress, peer)) for peer in self.connecting_peers]
         [t.start() for t in threads]
+
+    def connect_to_peer_download_folder(self, progress, peer):
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_socket.connect((peer['ip'], peer['port']))
 
     def connect_to_peer(self, progress, peer):
         # print('thread')
