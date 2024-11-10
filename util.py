@@ -15,6 +15,8 @@ from threading import Lock
 import psutil
 lockConnect = Lock()
 
+lockFile = Lock()
+
 
 load_dotenv()
 
@@ -453,8 +455,9 @@ def handle_message_response_block(client_socket, message_dict, progress):
     if progress:
         file_path = progress['file_path']
         piece_length = progress['metainfo_file']['info']['piece_length']
-        write_block_to_file(
-            file_path, message_dict['data'], piece_index * piece_length + offset, block_size)
+        with lockFile:
+            write_block_to_file(
+                file_path, message_dict['data'], piece_index * piece_length + offset, block_size)
         pieces = progress['pieces']
         block = pieces[piece_index]["blocks"][block_index]
         block['isDownloaded'] = True
@@ -505,5 +508,6 @@ def rename_file(file_path):
 
 
 def delete_file(file_path):
-    if os.path.exists(file_path):
-        os.remove(file_path)
+    with lockFile:
+        if os.path.exists(file_path):
+            os.remove(file_path)

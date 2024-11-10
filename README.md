@@ -28,13 +28,15 @@ message_reject = {
 }
 
 message_request_block = {
-  peer_id_client: string,
-  peer_id_server: string
-  info_hash: string,
-  piece_index : number,
-  offset:number
-  type: "BLOCK"
-}
+        peer_id_client: string,
+        peer_id_server: string,
+        info_hash: string,
+        piece_index: number
+        block_index: number
+        block_size: number
+        offset:number,
+        type: BLOCK
+    }
 
 message_response_block = {
   data: byte,

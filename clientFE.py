@@ -64,7 +64,6 @@ class ClientUI:
 
 # Hàm để chuyển đổi menu
 
-
     def toggle_menu(self):
         def collapse_toggle_menu():
             toggle_menu_fm.destroy()
@@ -277,31 +276,33 @@ class ClientUI:
         url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={
             self.port}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={self.ip}"
 
-        # try:
-        response = requests.get(url)
-        if response.status_code == 200:
-            # xoa peers tham gia tai file nay
-            if progress['event'] == 'started' or progress['event'] == 'completed':
-                self.peers = [
-                    peer for peer in self.peers if peer['client_id'] != peer_id]
-                self.set_peers = gen_set_peer(self.peers)
-                self.connecting_peers = gen_set_connecting_peer(self.set_peers)
-            # xoa tien trinh
-            self.list_progress = [
-                item for item in self.list_progress if not (item['info_hash'] == info_hash and item['peer_id'] == peer_id)]
-            self.message_handshake['downloading_file'] = [message for message in self.message_handshake['downloading_file'] if not (
-                message['info_hash'] == info_hash and message['peer_id'] == peer_id)]
-            time.sleep(1)
-            if file_path.endswith('.part'):
-                delete_file(file_path)
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                # xoa peers tham gia tai file nay
+                if progress['event'] == 'started' or progress['event'] == 'completed':
+                    progress['event'] = 'stopped'
+                    self.peers = [
+                        peer for peer in self.peers if peer['client_id'] != peer_id]
+                    self.set_peers = gen_set_peer(self.peers)
+                    self.connecting_peers = gen_set_connecting_peer(
+                        self.set_peers)
+                # xoa tien trinh
+                self.list_progress = [
+                    item for item in self.list_progress if not (item['info_hash'] == info_hash and item['peer_id'] == peer_id)]
+                self.message_handshake['downloading_file'] = [message for message in self.message_handshake['downloading_file'] if not (
+                    message['info_hash'] == info_hash and message['peer_id'] == peer_id)]
+                if file_path.endswith('.part'):
+                    # time.sleep(1)
+                    delete_file(file_path)
 
-        else:
+            else:
+                messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
+                print(f"Failed to download: {
+                    response.status_code} - {response.text}")
+        except Exception as e:
             messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
-            print(f"Failed to download: {
-                response.status_code} - {response.text}")
-        # except Exception as e:
-        #     messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
-        #     print(f"Error during download: {e}")
+            print(f"Error during download: {e}")
         # delete partial file if exist
 
         # Hàm hiển thị nội dung Upload
@@ -547,6 +548,13 @@ class ClientUI:
                 if progress['event'] != 'started':
                     break
                 message_request_block = message_request_block_queue.pop(0)
+                pieces = progress['pieces']
+                downloading_piece = pieces[message_request_block['piece_index']]
+                blocks = downloading_piece['blocks']
+                downloading_block = blocks[message_request_block['block_index']]
+                if downloading_block['isDownloaded']:
+                    continue
+
                 message_request_block_byte = convert_message_dict_to_byte(
                     message_request_block)
                 message_request_block_byte
