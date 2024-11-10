@@ -32,6 +32,7 @@ def calculate_piece_length(file_length):
     :return: piece length (tính bằng byte)
     """
     # Định nghĩa các khoảng kích thước file và piece length tương ứng
+
     if file_length < 1 * 512 * 1024:
         return file_length
     elif file_length < 1 * 1024 * 1024 * 1024:  # Dưới 1 GB
@@ -116,6 +117,34 @@ def hash_info(info):
     return info_hash
 
 
+def genMetainfoFolder(folder_path):
+    folder_info = {
+        "name": os.path.basename(folder_path),
+        "files": [],
+        "length": 0
+    }
+    for dirpath, dirnames, filenames in os.walk(folder_path):
+        for file in filenames:
+            file_path = os.path.join(dirpath, file)
+            if os.path.isfile(file_path):
+                filelength = os.path.getsize(file_path)
+                folder_info['length'] += filelength
+                relative_file_path = os.path.relpath(file_path, folder_path)
+                name_file = os.path.basename(file_path)
+                piece_length = calculate_piece_length(filelength)
+                num_piece = math.ceil(filelength/piece_length)
+                pieces = hash_file_pieces(file_path, num_piece, piece_length)
+                folder_info['files'] += [{"name": name_file, "length": filelength,
+                                          "pieces": pieces, "piece_length": piece_length, "path": relative_file_path}]
+    body = {
+        "info": folder_info,
+        "createBy": username
+    }
+    info_hash = hash_info(body['info'])
+    body['info_hash'] = info_hash
+    return body
+
+
 def genMetainfoFile(file_path):
     filelength = os.path.getsize(file_path)
     name = os.path.basename(file_path)
@@ -153,6 +182,37 @@ def split_piece_into_blocks(piece_length, isUpload, block_size=16*1024):
     return blocks
 
 
+def genProgressFolder(folder_path, isUpload):
+    metainfo_folder = genMetainfoFolder(folder_path)
+    files = metainfo_folder['info']['files']
+    for file in files:
+        piece_length = file['piece_length']
+        length = file['length']
+        num_piece = math.ceil(length/piece_length)
+        pieces_info = []
+        for i in range(num_piece):
+            rest = length - i*piece_length
+            blocks = split_piece_into_blocks(
+                (min(rest, piece_length)), isUpload)
+            pieces_info.append({
+                "piece_index": i,
+                "isDownloaded": isUpload,
+                "blocks": blocks
+            })
+        file['pieces_info'] = pieces_info
+
+    progress = {
+        "metainfo_folder": metainfo_folder,
+        "folder_path": folder_path,
+        "info_hash": hash_info(metainfo_folder['info']),
+        "uploaded": 0,
+        "downloaded": metainfo_folder['info']['length'] if isUpload else 0,
+        "left": 0,
+        "event": "completed" if isUpload else 'started',
+    }
+    return progress
+
+
 def genProgress(file_path, isUpload):
     metainfo_file = genMetainfoFile(file_path)
     piece_length = metainfo_file['info']['piece_length']
@@ -174,20 +234,12 @@ def genProgress(file_path, isUpload):
         "info_hash": hash_info(metainfo_file['info']),
         'file_path': file_path,
         "uploaded": 0,
-        "downloaded": metainfo_file['info']['length'],
+        "downloaded":   metainfo_file['info']['length'] if isUpload else 0,
         "left": 0,
-        "event": "completed",
+        "event": "completed" if isUpload else 'started',
         'pieces': pieces,
     }
     return progress
-
-
-def genMetainfoFolder(folder_path):
-    file_paths = []
-    for root, _, files in os.walk(folder_path):
-        for file in files:
-            file_paths.append(os.path.join(root, file))
-    return file_paths
 
 
 def removeByPeerId(list_progress, peer_id):
@@ -511,3 +563,10 @@ def delete_file(file_path):
     with lockFile:
         if os.path.exists(file_path):
             os.remove(file_path)
+
+
+def gen_info_text(idx, progress):
+    if progress['metainfo_file']:
+        pass
+    else:
+        pass

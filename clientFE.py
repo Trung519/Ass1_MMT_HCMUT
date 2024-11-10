@@ -234,11 +234,22 @@ class ClientUI:
         for idx, progress in enumerate(self.list_progress, start=1):
 
             downloaded = progress['downloaded']
-            file_length = progress['metainfo_file']['info']['length']
+            if 'metainfo_file' in progress:
+                file_length = progress['metainfo_file']['info']['length']
+                createBy = progress['metainfo_file']['createBy']
+                name = progress['metainfo_file']['info']['name']
+                percentage = (downloaded/file_length) * 100
+                infor_text = f"File {idx}: {name} \n createBy: {createBy}, uploaded: {
+                    progress['uploaded']}, downloaded: {progress['downloaded']} \n Progress: {percentage:.2f}% "
+            else:
+                file_length = progress['metainfo_folder']['info']['length']
+                createBy = progress['metainfo_folder']['createBy']
+                name = progress['metainfo_folder']['info']['name']
+                percentage = (downloaded/file_length) * 100
+                infor_text = f"Folder {idx}: {name} \n createBy: {createBy}, uploaded: {
+                    progress['uploaded']}, downloaded: {progress['downloaded']} \n Progress: {percentage:.2f}% "
+
             event = progress['event']
-            percentage = (downloaded/file_length) * 100
-            infor_text = f"File {idx}: {progress['metainfo_file']['info']['name']} \n createBy: {progress['metainfo_file']['createBy']}, uploaded: {
-                progress['uploaded']}, downloaded: {progress['downloaded']} \n Progress: {percentage:.2f}% "
             progress_frame = Frame(
                 self.content_frame, bg='white', bd=2, relief='solid')
             progress_frame.pack(fill='x', padx=(220, 0), pady=5)
@@ -472,8 +483,33 @@ class ClientUI:
         if folder_path:
             peer_id = str(uuid.uuid4())
             body = genMetainfoFolder(folder_path)
-            print(body)
-            print(folder_path)
+
+            progress = genProgressFolder(folder_path, True)
+            progress['peer_id'] = peer_id
+            info_hash = body['info_hash']
+            uploaded = progress['uploaded']
+            downloaded = progress['downloaded']
+            left = progress['left']
+            event = progress['event']
+            url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={
+                self.port}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={self.ip}"
+
+            try:
+                response = requests.get(url)
+                if response.status_code == 200:
+                    response_data = response.json()
+                    # luu peers
+                    self.peers += response_data.get("Peers", [])
+                    # luu mata info
+                    add_metainfo_file(body)
+                    # luu progress
+                    self.list_progress = [progress] + self.list_progress
+                else:
+                    messagebox.showerror(
+                        "Lỗi hệ thông", 'Lỗi trong quá trình upload folder')
+            except Exception as e:
+                messagebox.showerror(
+                    "Lỗi hệ thông", 'Lỗi trong quá trình upload folder')
 
     def on_closing(self):
         # Hiển thị hộp thoại xác nhận

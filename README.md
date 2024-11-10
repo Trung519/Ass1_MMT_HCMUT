@@ -92,10 +92,60 @@ client gui info_hash và peer_id để định danh --> kiểm tra trong peers
 - hiện các lỗi lên mesage_box
 - cập nhật isdownloaded của piece
 
-----------------------
-trong mỗi connecting_peer tạo luồng cho mỗi file
 
 
-lock khi nhận block
+metainfo_folder = {
+  name: string
+  files: [
+    {
+      name: string
+      length: number,
+      pieces: string
+      piece_length : number,
+      path: string,
+    }
+  ]
+}
+
+progress_folder = {
+  "metainfo_folder": {
+    "info": {
+      name: string,
+      files: [
+        {
+          name: string
+          length: number,
+          pieces: string
+          piece_length: number
+          path: string
+          pieces_info: [
+            {
+              piece_index: number,
+              isDownloaded: boolean
+              blocks: [
+                {
+                  offset: number,
+                  block_size: number
+                  isDownloaded: boolean
+                  block_index: number
+                }
+              ]
+            }
+          ]
+        }
+      ]
+      
+
+    }
+    "createBy": string,
+    "info_hash": string
+  }
+  peer_id: string
+  "folder_path" : string,
+  "uploaded": number,
+  "downloaded": number
+  "left": number,
+  "event": string
+}
 
 
