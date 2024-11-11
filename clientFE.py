@@ -256,6 +256,7 @@ class ClientUI:
             pieces.append({
                 'piece_index': i,
                 'isDownloaded': False,
+                "done_block": 0,
                 "blocks": blocks,
             })
         progress = {

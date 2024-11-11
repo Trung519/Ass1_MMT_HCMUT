@@ -228,6 +228,7 @@ def genProgress(file_path, isUpload):
         pieces.append({
             'piece_index': i,
             'isDownloaded': isUpload,
+            "done_block": len(blocks),
             'blocks': blocks,
         })
 
@@ -701,10 +702,14 @@ def handle_message_response_block(client_socket, message_dict, progress):
             write_block_to_file(
                 file_path, message_dict['data'], piece_index * piece_length + offset, block_size)
         pieces = progress['pieces']
+        piece = pieces[piece_index]
+        piece['done_block'] += 1
         block = pieces[piece_index]["blocks"][block_index]
         block['isDownloaded'] = True
         progress['downloaded'] += block['block_size']
         progress['left'] -= block['block_size']
+        if piece['done_block'] == len(piece['blocks']):
+            piece['isDownloaded'] = True
         if progress['downloaded'] >= progress['metainfo_file']['info']['length']:
             pieces_hash = progress['metainfo_file']['info']['pieces']
             pieces_hash_receive = hash_file_pieces(
