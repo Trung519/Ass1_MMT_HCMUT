@@ -185,7 +185,8 @@ def split_piece_into_blocks(piece_length, isUpload, block_size=16*1024):
 def genProgressFolder(folder_path, isUpload):
     metainfo_folder = genMetainfoFolder(folder_path)
     files = metainfo_folder['info']['files']
-    for file in files:
+    for j in range(len(files)):
+        file = files[j]
         piece_length = file['piece_length']
         length = file['length']
         num_piece = math.ceil(length/piece_length)
@@ -201,6 +202,7 @@ def genProgressFolder(folder_path, isUpload):
             })
         file['pieces_info'] = pieces_info
         file['isDownloaded'] = isUpload
+        file['file_index'] = j
 
     progress = {
         "metainfo_folder": metainfo_folder,
@@ -305,11 +307,68 @@ def handle_message_client(conn, message_dict, connecting_peers, list_progress):
     if message_dict['type'] == EMesage_Type.HANDSHAKE.value:
         handle_message_request_handshake(
             conn, message_dict, connecting_peers, list_progress)
+    elif message_dict['type'] == EMesage_Type.BLOCKFOLDER.value:
+        handle_message_request_block_folder(conn, message_dict, list_progress)
     elif message_dict['type'] == EMesage_Type.BLOCK.value:
         handle_message_request_block(conn, message_dict, list_progress)
+    elif message_dict['type'] == EMesage_Type.HANDSHAKEFOLDER.value:
+        handle_message_request_handshake_folder(
+            conn, message_dict, connecting_peers, list_progress)
     else:
         print('type message khong xac dinh')
+        message_reject = {
+            "type": EMesage_Type.REJECT.value,
+            "message": 'chặn kết nối'
+        }
+        message_reject_byte = convert_message_dict_to_byte(message_reject)
+        conn.sendall(message_reject_byte)
+        conn.send(b'<END>')
         conn.close()
+
+
+def handle_message_request_handshake_folder(conn, message_dict, connecting_peers, list_progress):
+    '''
+    message_dict = {
+        type: HANDSHAKEFOLDER,
+        ip: string,
+        port: number,
+        info_hash
+
+    }
+    '''
+    # print('MESSAGE REQUEST HANDSHAKE', message_dict)
+    if not is_allow_connect(message_dict, connecting_peers):
+        message_reject = {
+            "type": EMesage_Type.REJECT.value,
+            "message": 'chặn kết nối'
+        }
+        message_reject_byte = convert_message_dict_to_byte(message_reject)
+        conn.sendall(message_reject_byte)
+        conn.send(b'<END>')
+        conn.close()
+        return
+    files_info = []
+    for progress in list_progress:
+        if progress['info_hash'] != message_dict['info_hash']:
+            continue
+        files = progress['metainfo_folder']['info']['files']
+        for file in files:
+            peer_id = progress['peer_id']
+            file_index = file['file_index']
+            pieces_info = [{"piece_index": piece['piece_index']} for piece in file['pieces_info']
+                           if piece['isDownloaded']]
+            files_info += [{"peer_id": peer_id,
+                            "file_index": file_index, "pieces_info": pieces_info}]
+
+    message_response_handshake_folder = {
+        "type": EMesage_Type.HANDSHAKEFOLDER.value,
+        "info_hash": message_dict['info_hash'],
+        "files": files_info,
+    }
+    message_response_handshake_folder_byte = convert_message_dict_to_byte(
+        message_response_handshake_folder)
+    conn.sendall(message_response_handshake_folder_byte)
+    conn.send(b'<END>')
 
 
 def handle_message_request_handshake(conn, message_dict, connecting_peers, list_progress):
@@ -377,6 +436,52 @@ def is_allow_connect(message_dict, connecting_peers):
     return False
 
 
+def handle_message_request_block_folder(conn, message_dict, list_progress):
+    '''
+    message_dict = {
+        type: BLOCKFOLDER,
+        peer_id_client: string,
+        peer_id_server: string,
+        file_index: number,
+        piece_index: number,
+        block_index: number,
+        block_size: number,
+        offset: number
+    }
+    '''
+    print('REQUEST BLOCK', message_dict)
+    peer_id_server = message_dict['peer_id_server']
+    file_index = message_dict['file_index']
+    piece_index = message_dict['piece_index']
+    block_index = message_dict['block_index']
+    block_size = message_dict['block_size']
+    offset = message_dict['offset']
+    find_progress = next(
+        (progress for progress in list_progress if progress['peer_id'] == peer_id_server), None)
+
+    if find_progress:
+        folder_path = find_progress['folder_path']
+        file = find_progress['metainfo_folder']['info']['files'][file_index]
+        piece_length = file['piece_length']
+        file_path = file['path']
+        piece = file['pieces_info'][piece_index]
+        data = read_block_folder(folder_path, file_path, offset, block_size)
+        message_response_block = {
+            "type": EMesage_Type.BLOCKFOLDER.value,
+            "peer_id_client": message_dict['peer_id_client'],
+            "file_index": file_index,
+            "piece_index": piece_index,
+            "block_index": block_index,
+            "offset": offset,
+            "block_size": block_size,
+            "data": data,
+        }
+        message_response_block_byte = pickle.dumps(message_response_block)
+        find_progress['uploaded'] += block_size
+        conn.sendall(message_response_block_byte)
+        conn.send(b"<END>")
+
+
 def handle_message_request_block(conn, message_dict, list_progress):
     '''
     message_dict= {
@@ -428,8 +533,14 @@ def handle_message_server(client_socket, message_dict, peer, progress, message_r
     if message_dict['type'] == EMesage_Type.HANDSHAKE.value:
         handle_message_reponse_handshake(
             client_socket, message_dict, progress, message_request_block_queue)
+    elif message_dict['type'] == EMesage_Type.HANDSHAKEFOLDER.value:
+        handle_message_response_handshake_folder(
+            client_socket, message_dict, progress, message_request_block_queue)
     elif message_dict['type'] == EMesage_Type.REJECT.value:
         handle_message_response_reject(client_socket, message_dict, peer)
+    elif message_dict['type'] == EMesage_Type.BLOCKFOLDER.value:
+        handle_message_response_block_folder(
+            client_socket, message_dict, progress)
     elif message_dict['type'] == EMesage_Type.BLOCK.value:
         handle_message_response_block(
             client_socket, message_dict, progress)
@@ -437,6 +548,51 @@ def handle_message_server(client_socket, message_dict, peer, progress, message_r
         print('type khong xac dinh')
         client_socket.close()
         # peer['isConnected'] = False
+
+
+def handle_message_response_handshake_folder(client_socket, message_dict, progress, message_request_block_queue):
+    '''
+    message_dict = {
+        type: HANDSHAKEFOLDER,
+        info_hash: string,
+        files: [
+            {
+                peer_id: string,
+                file_index: number,
+                pieces_info:[
+                    piece_index: number
+                ]
+            }
+        ]
+    }
+    '''
+    if message_dict['info_hash'] != progress['info_hash']:
+        return
+    progress_files = progress['metainfo_folder']['info']['files']
+    files = message_dict['files']
+    for file in files:
+        progress_file = progress_files[file['file_index']]
+        if progress_file['isDownloaded']:
+            continue
+        progress_file_pieces_info = progress_file['pieces_info']
+        for piece_info in file['pieces_info']:
+            progress_file_piece_info = progress_file_pieces_info[piece_info['piece_index']]
+            if progress_file_piece_info['isDownloaded']:
+                continue
+            progress_file_piece_info_blocks = progress_file_piece_info['blocks']
+            message_request_block_queue += [
+                {
+                    "type": EMesage_Type.BLOCKFOLDER.value,
+                    "peer_id_client": progress['peer_id'],
+                    "peer_id_server": file['peer_id'],
+                    "file_index": file['file_index'],
+                    "piece_index": piece_info['piece_index'],
+                    "block_index": block['block_index'],
+                    "block_size": block['block_size'],
+                    "offset": block['offset']
+
+                } for block in progress_file_piece_info_blocks if not block['isDownloaded']
+            ]
 
 
 def handle_message_reponse_handshake(client_socket, message_dict, progress, message_request_block_queue):
@@ -479,6 +635,37 @@ def handle_message_response_reject(client_socket, message_dict, peer):
     client_socket.close()
 
 
+def handle_message_response_block_folder(client_socket, message_dict, progress):
+    '''
+    message_dict = {
+        type: BLOCKFOLDER,
+        peer_id_client: string,
+        file_index: number,
+        piece_index: number,
+        block_index: number,
+        offset: number,
+        block_size: block_size,
+        "data": data
+    }
+    '''
+    block_size = message_dict['block_size']
+    file_index = message_dict['file_index']
+    piece_index = message_dict['piece_index']
+    block_index = message_dict['block_index']
+    folder_path = progress['folder_path']
+    file = progress['metainfo_folder']['info']['files'][file_index]
+    piece_info = file['pieces_info'][piece_index]
+    block = piece_info['blocks'][block_index]
+    file_path = file['path']
+    offset = message_dict['offset']
+    data = message_dict['data']
+    write_block_to_file_folder(
+        folder_path, file_path, data, offset, block_size)
+    block['isDownloaded'] = True
+    progress['downloaded'] += block['block_size']
+    progress['left'] -= block['block_size']
+
+
 def handle_message_response_block(client_socket, message_dict, progress):
     '''
     message_dict = {
@@ -503,10 +690,13 @@ def handle_message_response_block(client_socket, message_dict, progress):
     # print('----------------------------')
     # print('PIECE INDEX', piece_index)
     # print('BLOCK INDEX', block_index)
-    # print('----------------------------')
+    # print('----------
+    # ------------------')
     if progress:
         file_path = progress['file_path']
         piece_length = progress['metainfo_file']['info']['piece_length']
+        length = progress['metainfo_file']['info']['length']
+        num_piece = math.ceil(length/piece_length)
         with lockFile:
             write_block_to_file(
                 file_path, message_dict['data'], piece_index * piece_length + offset, block_size)
@@ -516,6 +706,14 @@ def handle_message_response_block(client_socket, message_dict, progress):
         progress['downloaded'] += block['block_size']
         progress['left'] -= block['block_size']
         if progress['downloaded'] >= progress['metainfo_file']['info']['length']:
+            pieces_hash = progress['metainfo_file']['info']['pieces']
+            pieces_hash_receive = hash_file_pieces(
+                file_path, num_piece, piece_length)
+            if pieces_hash != pieces_hash_receive:
+                delete_file(file_path)
+                messagebox.showerror('Lỗi Tải file', "File tải về không khớp")
+                client_socket.close()
+                return
             from client import clientUi
             clientUi.complete_download(progress)
             rename_file(file_path)
@@ -527,6 +725,33 @@ def read_block(file_path, offset, block_size):
         file.seek(offset)
         data = file.read(block_size)
     return data
+
+
+def read_block_folder(folder_path, file_path, offset, block_size):
+    full_path = os.path.join(folder_path, file_path)
+    # if not os.path.isfile(full_path):
+    #     print(f"Tệp không tồn tại: {full_path}")
+    #     return None
+
+    with open(full_path, 'rb') as file:
+        file.seek(offset)
+        data = file.read(block_size)
+    return data
+
+
+def write_block_to_file_folder(folder_path, file_path, data, offset, block_size):
+    # Tạo đường dẫn đầy đủ cho file
+    full_path = os.path.join(folder_path, file_path)
+
+    # Tạo tất cả thư mục trong đường dẫn (bao gồm các thư mục con)
+    os.makedirs(os.path.dirname(full_path), exist_ok=True)
+
+    # Mở file ở chế độ nhị phân ghi, tạo mới nếu chưa có
+    with open(full_path, 'wb+') as file:
+        # Mở rộng file để có thể ghi vào vị trí offset nếu cần thiết
+        file.seek(offset)
+        # Ghi dữ liệu block vào file
+        file.write(data[:block_size])
 
 
 def write_block_to_file(file_path, data, offset, block_size):
@@ -570,3 +795,11 @@ def gen_info_text(idx, progress):
         pass
     else:
         pass
+
+
+def change_extension_to_part(file_path):
+    # Tách phần gốc và phần mở rộng của đường dẫn file
+    base, _ = os.path.splitext(file_path)
+    # Thêm phần mở rộng mới .part
+    new_file_path = f"{base}.part"
+    return new_file_path

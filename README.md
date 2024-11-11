@@ -2,10 +2,34 @@ message_request_handshake = {
   type: "HANDSHAKE",
   ip: string
   port: number
-  DOWNLOADING_FILE = [
+  file =  {
+    info_hash :string,
+    peer_id: string,
+  }
+        
+}
+
+message_request_handshake_folder{
+  type: handshakeFolder
+  ip: string
+  port:number,
+  folder : {
+    info_hash: string
+    peer_id: string
+  }
+}
+message_response_handshake_folder = {
+  type: HANDSHAKEFOLDER,
+  info_hash: string
+  files : [
     {
-      "info_hash": string,
-      "peer_id" : string,
+      peer_id: string
+      file_index: number
+      pieces_info: [
+        {
+          piece_index: number
+        }
+      ]
     }
   ]
 }
@@ -22,9 +46,37 @@ message_response_handshake = {
 }
 
 
+message_response_handshake_folder = {
+  type: HANDSHAKEFOLDER,
+  info_hash:string
+  peer_id
+  files: [
+    {
+      file_index: number
+      pieces_info: [
+        {
+          piece_index: number
+        }
+      ]
+    }
+  ]
+}
+
+
 message_reject = {
   type: "REJECT".
   message: ""
+}
+
+message_request_block_folder = {
+  type: BLOCKFOLDER
+  peer_id_client: string
+  peer_id_server: string,
+  file_index: number,
+  piece_index: number,
+  block_index: number,
+  block_size: number,
+  offset: number
 }
 
 message_request_block = {
@@ -147,5 +199,7 @@ progress_folder = {
   "left": number,
   "event": string
 }
+
+
 
 
