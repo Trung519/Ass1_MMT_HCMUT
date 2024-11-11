@@ -12,7 +12,7 @@ import random
 from message_type import EMesage_Type
 import pickle
 from threading import Lock
-import psutil
+import shutil
 lockConnect = Lock()
 
 lockFile = Lock()
@@ -198,11 +198,13 @@ def genProgressFolder(folder_path, isUpload):
             pieces_info.append({
                 "piece_index": i,
                 "isDownloaded": isUpload,
+                "done_block": len(blocks),
                 "blocks": blocks
             })
         file['pieces_info'] = pieces_info
         file['isDownloaded'] = isUpload
         file['file_index'] = j
+        file['done_piece'] = num_piece
 
     progress = {
         "metainfo_folder": metainfo_folder,
@@ -450,7 +452,7 @@ def handle_message_request_block_folder(conn, message_dict, list_progress):
         offset: number
     }
     '''
-    print('REQUEST BLOCK', message_dict)
+    # print('REQUEST BLOCK', message_dict)
     peer_id_server = message_dict['peer_id_server']
     file_index = message_dict['file_index']
     piece_index = message_dict['piece_index']
@@ -460,13 +462,16 @@ def handle_message_request_block_folder(conn, message_dict, list_progress):
     find_progress = next(
         (progress for progress in list_progress if progress['peer_id'] == peer_id_server), None)
 
+    # print('RESPONSE', piece_index, block_index)
+
     if find_progress:
         folder_path = find_progress['folder_path']
         file = find_progress['metainfo_folder']['info']['files'][file_index]
         piece_length = file['piece_length']
         file_path = file['path']
         piece = file['pieces_info'][piece_index]
-        data = read_block_folder(folder_path, file_path, offset, block_size)
+        data = read_block_folder(
+            folder_path, file_path, piece_index * piece_length + offset, block_size)
         message_response_block = {
             "type": EMesage_Type.BLOCKFOLDER.value,
             "peer_id_client": message_dict['peer_id_client'],
@@ -649,6 +654,7 @@ def handle_message_response_block_folder(client_socket, message_dict, progress):
         "data": data
     }
     '''
+
     block_size = message_dict['block_size']
     file_index = message_dict['file_index']
     piece_index = message_dict['piece_index']
@@ -656,15 +662,40 @@ def handle_message_response_block_folder(client_socket, message_dict, progress):
     folder_path = progress['folder_path']
     file = progress['metainfo_folder']['info']['files'][file_index]
     piece_info = file['pieces_info'][piece_index]
+    piece_length = file['piece_length']
     block = piece_info['blocks'][block_index]
     file_path = file['path']
     offset = message_dict['offset']
-    data = message_dict['data']
-    write_block_to_file_folder(
-        folder_path, file_path, data, offset, block_size)
+    with lockFile:
+        write_block_to_file_folder(
+            folder_path, file_path, message_dict['data'], piece_index * piece_length + offset, block_size)
+    # print('RECEIVE', piece_index, block_index)
+
     block['isDownloaded'] = True
     progress['downloaded'] += block['block_size']
     progress['left'] -= block['block_size']
+    piece_info['done_block'] += 1
+    if piece_info['done_block'] == len(piece_info['blocks']):
+        piece_info['isDownloaded'] = True
+        file['done_piece'] += 1
+        num_piece = math.ceil(file['length']/piece_length)
+        if file['done_piece'] == num_piece:
+            file['isDownloaded'] = True
+            pieces_hash = file['pieces']
+            full_path = os.path.join(folder_path, file_path)
+            pieces_hash_receive = hash_file_pieces(
+                full_path, num_piece, piece_length)
+            if pieces_hash != pieces_hash_receive:
+
+                delete_file(full_path)
+                messagebox.showerror('Lỗi Tải file', "File tải về không khớp")
+                client_socket.close()
+                return
+            rename_file(full_path)
+            if progress['downloaded'] >= progress['metainfo_folder']['info']['length']:
+                from client import clientUi
+                clientUi.complete_download(progress)
+                client_socket.close()
 
 
 def handle_message_response_block(client_socket, message_dict, progress):
@@ -717,12 +748,12 @@ def handle_message_response_block(client_socket, message_dict, progress):
             if pieces_hash != pieces_hash_receive:
                 delete_file(file_path)
                 messagebox.showerror('Lỗi Tải file', "File tải về không khớp")
-                client_socket.close()
+                # client_socket.close()
                 return
             from client import clientUi
             clientUi.complete_download(progress)
             rename_file(file_path)
-            client_socket.close()
+            # client_socket.close()
 
 
 def read_block(file_path, offset, block_size):
@@ -737,10 +768,14 @@ def read_block_folder(folder_path, file_path, offset, block_size):
     # if not os.path.isfile(full_path):
     #     print(f"Tệp không tồn tại: {full_path}")
     #     return None
+    # print('READ DATA', full_path, offset, block_size)
 
     with open(full_path, 'rb') as file:
         file.seek(offset)
         data = file.read(block_size)
+    # sha1_hash = hashlib.sha1(data).digest()
+    # encoded_data = base64.b64encode(sha1_hash).decode('utf-8')
+    # print('READ DATA', encoded_data)
     return data
 
 
@@ -748,14 +783,19 @@ def write_block_to_file_folder(folder_path, file_path, data, offset, block_size)
     # Tạo đường dẫn đầy đủ cho file
     full_path = os.path.join(folder_path, file_path)
 
-    # Tạo tất cả thư mục trong đường dẫn (bao gồm các thư mục con)
+    # Tạo tất cả thư mục trong đường dẫn (bao gồm các thư mục con) nếu chưa có
     os.makedirs(os.path.dirname(full_path), exist_ok=True)
 
-    # Mở file ở chế độ nhị phân ghi, tạo mới nếu chưa có
-    with open(full_path, 'wb+') as file:
-        # Mở rộng file để có thể ghi vào vị trí offset nếu cần thiết
+    # Tạo file trống nếu chưa tồn tại
+    if not os.path.exists(full_path):
+        with open(full_path, 'wb') as file:
+            pass
+
+    # Mở file ở chế độ đọc và ghi nhị phân, không xóa dữ liệu cũ
+    with open(full_path, 'r+b') as file:
+        # Di chuyển con trỏ file đến vị trí offset
         file.seek(offset)
-        # Ghi dữ liệu block vào file
+        # Ghi dữ liệu block vào vị trí chỉ định
         file.write(data[:block_size])
 
 
@@ -802,9 +842,17 @@ def gen_info_text(idx, progress):
         pass
 
 
-def change_extension_to_part(file_path):
-    # Tách phần gốc và phần mở rộng của đường dẫn file
-    base, _ = os.path.splitext(file_path)
-    # Thêm phần mở rộng mới .part
-    new_file_path = f"{base}.part"
-    return new_file_path
+def delete_folder(folder_path):
+    # Kiểm tra xem thư mục có tồn tại không
+    if os.path.exists(folder_path) and os.path.isdir(folder_path):
+        shutil.rmtree(folder_path)
+        print(f"Đã xóa thư mục: {folder_path}")
+    else:
+        print(f"Thư mục không tồn tại: {folder_path}")
+
+# def change_extension_to_part(file_path):
+#     # Tách phần gốc và phần mở rộng của đường dẫn file
+#     base, _ = os.path.splitext(file_path)
+#     # Thêm phần mở rộng mới .part
+#     new_file_path = f"{base}.part"
+#     return new_file_path

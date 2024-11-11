@@ -64,6 +64,7 @@ class ClientUI:
 
 # Hàm để chuyển đổi menu
 
+
     def toggle_menu(self):
         def collapse_toggle_menu():
             toggle_menu_fm.destroy()
@@ -178,12 +179,14 @@ class ClientUI:
                 pieces_info.append({
                     "piece_index": i,
                     "isDownloaded": False,
+                    "done_block": 0,
                     "blocks": blocks
                 })
             file['pieces_info'] = pieces_info
             file['isDownloaded'] = False
             file['file_index'] = j
-            file['path'] = change_extension_to_part(file['path'])
+            file['done_piece'] = 0
+            file['path'] = file['path'] + '.part'
 
         progress = {
             "metainfo_folder": metainfo,
@@ -367,7 +370,7 @@ class ClientUI:
         downloaded = progress['downloaded']
         left = progress['left']
         event = 'stopped'
-        file_path = progress['file_path']
+        # file_path = progress['file_path']
         url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={
             self.port}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={self.ip}"
 
@@ -387,9 +390,15 @@ class ClientUI:
                     item for item in self.list_progress if not (item['info_hash'] == info_hash and item['peer_id'] == peer_id)]
                 self.message_handshake['downloading_file'] = [message for message in self.message_handshake['downloading_file'] if not (
                     message['info_hash'] == info_hash and message['peer_id'] == peer_id)]
-                if file_path.endswith('.part'):
-                    # time.sleep(1)
-                    delete_file(file_path)
+                if 'folder_path' in progress:
+                    folder_path = progress['folder_path']
+                    if progress['left'] != 0:
+                        delete_folder(folder_path)
+                else:
+                    file_path = progress['file_path']
+                    if file_path.endswith('.part'):
+                        # time.sleep(1)
+                        delete_file(file_path)
 
             else:
                 messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
@@ -456,10 +465,14 @@ class ClientUI:
                 self.peers += response_data.get('Peers', [])
                 self.set_peers = gen_set_peer(self.peers)
                 self.connecting_peers = gen_set_connecting_peer(self.set_peers)
-                Thread(target=self.handle_download_file,
-                       args=(progress,), daemon=True).start()
-                self.message_handshake['downloading_file'].append(
-                    {'info_hash': info_hash, 'peer_id': peer_id, })
+                if 'folder_path' in progress:
+                    Thread(target=self.handle_download_folder,
+                           args=(progress,), daemon=True).start()
+                else:
+                    Thread(target=self.handle_download_file,
+                           args=(progress,), daemon=True).start()
+                    self.message_handshake['downloading_file'].append(
+                        {'info_hash': info_hash, 'peer_id': peer_id, })
 
             else:
                 messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
@@ -630,6 +643,7 @@ class ClientUI:
 
     def connect_to_peer_download_folder(self, progress, peer):
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        print('CONNECT TO THIS', peer)
         client_socket.connect((peer['ip'], peer['port']))
         message_request_block_queue = []
         message_handshake = {
@@ -699,6 +713,7 @@ class ClientUI:
                     client_socket, message_dict, peer, progress, message_request_block_queue)
 
         print('END CONNECT')
+        client_socket.close()
         return client_socket
 
     def connect_to_peer(self, progress, peer):

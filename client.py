@@ -73,7 +73,8 @@ def get_host_default_interface_ip():
 
 
 clientip = get_host_default_interface_ip()
-port = random.randint(6000, 7000)
+# port = random.randint(6000, 7000)
+port = 6000
 server_ip = '127.0.0.1'  # Replace with your server's IP
 server_port = 5000       # Replace with your server's listening port (integer)
 clientUi = ClientUI(clientip, port)
