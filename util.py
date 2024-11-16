@@ -274,7 +274,7 @@ def gen_set_connecting_peer(set_peer):
     result.append(set_peer[random_peer])
 
 
-def gen_set_peer(peers):
+def gen_set_peer(peers, set_peers):
     # print('gen set peer --------------')
     seen_ip_port = set()
     unique_peers = []
@@ -286,14 +286,18 @@ def gen_set_peer(peers):
         
         if ip_port not in seen_ip_port:
             # peer['isConnected'] = False
-            
-            
-            unique_peers.append({
-                "ip": peer['ip'],
-                'port': peer['port'],
-                "speed": peer['speed'],
-                # "isConnected": False,
-            })
+            connecting_peer = next((setPeer for setPeer in set_peers if setPeer['ip']==peer['ip'] and setPeer['port'] == peer['port']), None)
+            if connecting_peer:
+                unique_peers.append(
+                    connecting_peer
+                )
+            else:
+                unique_peers.append({
+                    "ip": peer['ip'],
+                    'port': peer['port'],
+                    "speed": peer['speed'],
+                    # "isConnected": False,
+                })
             seen_ip_port.add(ip_port)
     # print(unique_peers, 'unique_peers')
     # print('-------------')
@@ -700,6 +704,7 @@ def handle_message_reponse_handshake(clientUi,client_socket, message_dict,peer, 
                     message_dict = pickle.loads(response)
                     # receive block
                     peer['speed'] +=block['block_size']
+                    
                     handle_message_response_block(client_socket,message_dict,progress)
 
 

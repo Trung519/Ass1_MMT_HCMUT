@@ -43,7 +43,7 @@ def refresh_peers_per_30_minutes():
                     response_data = response.json()
                     clientUi.peers[peer_id] = response_data.get(
                         'Peers', [])
-                    clientUi.set_peers = gen_set_peer(clientUi.peers)
+                    clientUi.set_peers = gen_set_peer(clientUi.peers, clientUi.set_peers)
                     clientUi.connecting_peers = gen_set_connecting_peer(
                         clientUi.set_peers)
                 # except Exception as e:
@@ -71,7 +71,7 @@ def get_host_default_interface_ip():
 
 clientip = get_host_default_interface_ip()
 # port = random.randint(6000, 7000)
-port = 6000
+port = 6003
 server_ip = '127.0.0.1'  # Replace with your server's IP
 server_port = 5000       # Replace with your server's listening port (integer)
 clientUi = ClientUI(clientip, port)

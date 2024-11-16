@@ -204,7 +204,7 @@ class ClientUI:
                 messagebox.showinfo("Download folder", "File đang được tải xuống vui lòng kiểm tra trong Downloads & Uploads")
                 response_data = response.json()
                 self.peers += response_data.get('Peers', [])
-                self.set_peers = gen_set_peer(self.peers)
+                self.set_peers = gen_set_peer(self.peers, self.set_peers)
                 self.connecting_peers = gen_set_connecting_peer(self.set_peers)
                 Thread(target=self.handle_download_folder,
                        args=(progress,), daemon=True).start()
@@ -280,7 +280,7 @@ class ClientUI:
             # Giả sử server trả về JSON
                 response_data = response.json()  # Chuyển đổi thành đối tượng Python
                 self.peers += response_data.get('Peers', [])
-                self.set_peers = gen_set_peer(self.peers)
+                self.set_peers = gen_set_peer(self.peers, self.set_peers)
                 self.connecting_peers = gen_set_connecting_peer(self.set_peers)
                 Thread(target=self.handle_download_file,
                        args=(progress,), daemon=True).start()
@@ -366,7 +366,7 @@ class ClientUI:
                     progress['event'] = 'stopped'
                     self.peers = [
                         peer for peer in self.peers if peer['client_id'] != peer_id]
-                    self.set_peers = gen_set_peer(self.peers)
+                    self.set_peers = gen_set_peer(self.peers, self.set_peers)
                     self.connecting_peers = gen_set_connecting_peer(
                         self.set_peers)
                 # xoa tien trinh
@@ -410,7 +410,7 @@ class ClientUI:
             self.peers = [
                 peer for peer in self.peers if peer['client_id'] != peer_id]
 
-            self.set_peers = gen_set_peer(self.peers)
+            self.set_peers = gen_set_peer(self.peers,self.set_peers)
             self.connecting_peers = gen_set_connecting_peer(self.set_peers)
 
             self.message_handshake['downloading_file'] = [message for message in self.message_handshake['downloading_file'] if not (
@@ -442,7 +442,7 @@ class ClientUI:
                 # Giả sử server trả về JSON
                 response_data = response.json()
                 self.peers += response_data.get('Peers', [])
-                self.set_peers = gen_set_peer(self.peers)
+                self.set_peers = gen_set_peer(self.peers, self.set_peers)
                 self.connecting_peers = gen_set_connecting_peer(self.set_peers)
                 if 'folder_path' in progress:
                     Thread(target=self.handle_download_folder,
@@ -698,10 +698,13 @@ class ClientUI:
     
     def select_peer_per_ten_second(self):
         while True:
-            print('CONNECTING PEERS', self.connecting_peers)
-            self.set_peers = gen_set_peer(self.peers)
+            self.set_peers = gen_set_peer(self.peers, self.set_peers)
             self.connecting_peers = gen_set_connecting_peer(self.set_peers)
+            # print('CONNECTING PEERS', self.connecting_peers)
+            for peer in self.set_peers:
+                peer['speed'] =0
             time.sleep(10)
+            
             
 
     def run(self):
