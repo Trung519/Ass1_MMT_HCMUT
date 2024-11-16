@@ -278,12 +278,16 @@ def gen_set_peer(peers):
     # print('gen set peer --------------')
     seen_ip_port = set()
     unique_peers = []
+    
 
     for peer in peers:
         # peer = {ip, port, peer_id, speed }
         ip_port = (peer["ip"], peer["port"])
+        
         if ip_port not in seen_ip_port:
             # peer['isConnected'] = False
+            
+            
             unique_peers.append({
                 "ip": peer['ip'],
                 'port': peer['port'],
@@ -526,22 +530,22 @@ def handle_message_request_block(conn, message_dict, list_progress):
             "type": EMesage_Type.BLOCK.value,
         }
         message_response_block_byte = pickle.dumps(message_response_block)
-        find_progress['uploaded'] += block_size
         conn.sendall(message_response_block_byte)
+        find_progress['uploaded'] += block_size
         conn.send(b"<END>")
 
 
-def handle_message_server(client_socket, message_dict, peer, progress, message_request_block_queue):
+def handle_message_server(clienUI,client_socket, message_dict, peer, progress,lock_download_block):
     # print('---------------------------------')
     # print('MESSAGE FROM SERVER', message_dict)
     # print('---------------------------------')
 
     if message_dict['type'] == EMesage_Type.HANDSHAKE.value:
-        handle_message_reponse_handshake(
-            client_socket, message_dict, progress, message_request_block_queue)
+        handle_message_reponse_handshake(clienUI,
+            client_socket, message_dict,peer, progress,lock_download_block)
     elif message_dict['type'] == EMesage_Type.HANDSHAKEFOLDER.value:
-        handle_message_response_handshake_folder(
-            client_socket, message_dict, progress, message_request_block_queue)
+        handle_message_response_handshake_folder(clienUI,
+            client_socket, message_dict,peer, progress,lock_download_block)
     elif message_dict['type'] == EMesage_Type.REJECT.value:
         handle_message_response_reject(client_socket, message_dict, peer)
     elif message_dict['type'] == EMesage_Type.BLOCKFOLDER.value:
@@ -556,7 +560,7 @@ def handle_message_server(client_socket, message_dict, peer, progress, message_r
         # peer['isConnected'] = False
 
 
-def handle_message_response_handshake_folder(client_socket, message_dict, progress, message_request_block_queue):
+def handle_message_response_handshake_folder(clientUi,client_socket, message_dict,peer, progress,lock_download_block):
     '''
     message_dict = {
         type: HANDSHAKEFOLDER,
@@ -573,35 +577,66 @@ def handle_message_response_handshake_folder(client_socket, message_dict, progre
     }
     '''
     if message_dict['info_hash'] != progress['info_hash']:
+        client_socket.close()
         return
+    if progress['event'] !='started' or clientUi.isDisconnect(peer):
+        client_socket.close()
+        return
+    
     progress_files = progress['metainfo_folder']['info']['files']
     files = message_dict['files']
     for file in files:
+        if clientUi.isDisconnect(peer) or progress['event'] !='started': 
+            client_socket.close()
+            return
         progress_file = progress_files[file['file_index']]
         if progress_file['isDownloaded']:
             continue
         progress_file_pieces_info = progress_file['pieces_info']
         for piece_info in file['pieces_info']:
+            if clientUi.isDisconnect(peer) or progress['event'] !='started': 
+                client_socket.close()
+                return
             progress_file_piece_info = progress_file_pieces_info[piece_info['piece_index']]
             if progress_file_piece_info['isDownloaded']:
                 continue
             progress_file_piece_info_blocks = progress_file_piece_info['blocks']
-            message_request_block_queue += [
-                {
-                    "type": EMesage_Type.BLOCKFOLDER.value,
-                    "peer_id_client": progress['peer_id'],
-                    "peer_id_server": file['peer_id'],
-                    "file_index": file['file_index'],
-                    "piece_index": piece_info['piece_index'],
-                    "block_index": block['block_index'],
-                    "block_size": block['block_size'],
-                    "offset": block['offset']
+            for block in progress_file_piece_info_blocks:
+                if clientUi.isDisconnect(peer) or progress['event'] != 'started':
+                    client_socket.close()
+                    return
+                with lock_download_block:
+                    if block['isDownloaded']:
+                        continue
+                    message_request_block ={
+                            "type": EMesage_Type.BLOCKFOLDER.value,
+                            "peer_id_client": progress['peer_id'],
+                            "peer_id_server": file['peer_id'],
+                            "file_index": file['file_index'],
+                            "piece_index": piece_info['piece_index'],
+                            "block_index": block['block_index'],
+                            "block_size": block['block_size'],
+                            "offset": block['offset']
+                    } 
+                    message_request_block_byte = convert_message_dict_to_byte(message_request_block)
+                    client_socket.sendall(message_request_block_byte)
+                    client_socket.send(b'<END>')
+                    is_receive_full_response = False
+                    response = b''
+                    while not is_receive_full_response:
+                        data = client_socket.recv(1024)
+                        response+=data
+                        if response[-5:] == b'<END>':
+                            is_receive_full_response = True
+                            response = response[:-5]
+                    message_dict = pickle.loads(response)
+                    # receive block
+                    peer['speed']+=block['block_size']
+                    handle_message_response_block_folder(client_socket,message_dict,progress)
+                
 
-                } for block in progress_file_piece_info_blocks if not block['isDownloaded']
-            ]
 
-
-def handle_message_reponse_handshake(client_socket, message_dict, progress, message_request_block_queue):
+def handle_message_reponse_handshake(clientUi,client_socket, message_dict,peer, progress,lock_download_block):
     '''
     message_dict = {
         type: 'HANDSHAKE',
@@ -614,8 +649,18 @@ def handle_message_reponse_handshake(client_socket, message_dict, progress, mess
         ]
     }
     '''
+    
+    
+    
+    if progress['event'] != 'started'or clientUi.isDisconnect(peer):
+        client_socket.close()
+        return
+    
     pieces = progress['pieces']
     for piece_info in message_dict['pieces_info']:
+        if clientUi.isDisconnect(peer) or progress['event'] !='started': 
+            client_socket.close()
+            return
         # if progress['info_hash'] != piece_info['info_hash']:
         #     continue
         piece_index_server = piece_info['piece_index']
@@ -623,17 +668,39 @@ def handle_message_reponse_handshake(client_socket, message_dict, progress, mess
         piece_client = pieces[piece_index_server]
         if not piece_client['isDownloaded']:
             blocks = piece_client['blocks']
-            message_request_block_queue += [
-                {
-                    "peer_id_client": progress['peer_id'],
-                    "peer_id_server": peer_id_server,
-                    "info_hash": progress['info_hash'],
-                    "piece_index": piece_index_server,
-                    "offset": block['offset'],
-                    'block_index': block['block_index'],
-                    'block_size': block['block_size'],
-                    "type": EMesage_Type.BLOCK.value,
-                }for block in blocks if not block['isDownloaded']]
+            for block in blocks:
+                if clientUi.isDisconnect(peer) or progress['event'] != 'started':
+                    client_socket.close()
+                    return
+                with lock_download_block:
+                    if block['isDownloaded']:
+                        continue
+                    #send message_request_block --> 
+                    message_request_block =  {
+                            "peer_id_client": progress['peer_id'],
+                            "peer_id_server": peer_id_server,
+                            "info_hash": progress['info_hash'],
+                            "piece_index": piece_index_server,
+                            "offset": block['offset'],
+                            'block_index': block['block_index'],
+                            'block_size': block['block_size'],
+                            "type": EMesage_Type.BLOCK.value,
+                    }
+                    message_request_block_byte = convert_message_dict_to_byte(message_request_block)
+                    client_socket.sendall(message_request_block_byte)
+                    client_socket.send(b'<END>')
+                    is_receive_full_response = False
+                    response = b''
+                    while not is_receive_full_response:
+                        data = client_socket.recv(1024)
+                        response+=data
+                        if response[-5:] == b'<END>':
+                            is_receive_full_response = True
+                            response = response[:-5]
+                    message_dict = pickle.loads(response)
+                    # receive block
+                    peer['speed'] +=block['block_size']
+                    handle_message_response_block(client_socket,message_dict,progress)
 
 
 def handle_message_response_reject(client_socket, message_dict, peer):
@@ -693,7 +760,7 @@ def handle_message_response_block_folder(client_socket, message_dict, progress):
                 return
             rename_file(full_path)
             if progress['downloaded'] >= progress['metainfo_folder']['info']['length']:
-                from client import clientUi
+                from peer import clientUi
                 clientUi.complete_download(progress)
                 client_socket.close()
 
@@ -750,7 +817,7 @@ def handle_message_response_block(client_socket, message_dict, progress):
                 messagebox.showerror('Lỗi Tải file', "File tải về không khớp")
                 # client_socket.close()
                 return
-            from client import clientUi
+            from peer import clientUi
             clientUi.complete_download(progress)
             rename_file(file_path)
             # client_socket.close()

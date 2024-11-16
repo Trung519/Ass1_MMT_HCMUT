@@ -1,17 +1,15 @@
 from tkinter import Tk, messagebox, filedialog, Button, Frame, LEFT, TOP, X, BOTH, Label, RIGHT
 import sys
-import os
-import hashlib
 from util import *
 from api import *
-import urllib.parse
-import bencodepy
+
 import uuid
 import math
 from message_type import EMesage_Type
-import time
 from threading import Thread
 import socket
+import time
+
 
 
 class ClientUI:
@@ -63,7 +61,6 @@ class ClientUI:
 
 
 # Hàm để chuyển đổi menu
-
 
     def toggle_menu(self):
         def collapse_toggle_menu():
@@ -149,6 +146,8 @@ class ClientUI:
             i = 0
             while i < len(self.list_progress):
                 item = self.list_progress[i]
+                if 'metainfo_folder' not in item:
+                    continue
                 folder_name_proress = item['metainfo_folder']['info']['name']
 
                 if folder_name_proress == name_folder_download:
@@ -202,8 +201,7 @@ class ClientUI:
         try:
             response = requests.get(url)
             if response.status_code == 200:
-                messagebox.showinfo(
-                    "Download folder", "File đang được tải xuống vui lòng kiểm tra trong Downloads & Uploads")
+                messagebox.showinfo("Download folder", "File đang được tải xuống vui lòng kiểm tra trong Downloads & Uploads")
                 response_data = response.json()
                 self.peers += response_data.get('Peers', [])
                 self.set_peers = gen_set_peer(self.peers)
@@ -211,11 +209,9 @@ class ClientUI:
                 Thread(target=self.handle_download_folder,
                        args=(progress,), daemon=True).start()
             else:
-                messagebox.showerror(
-                    "Lỗi hệ thống", "Lỗi trong quá trình tải folder")
+                messagebox.showerror("Lỗi hệ thống", "Lỗi trong quá trình tải folder")
         except Exception as e:
-            messagebox.showerror(
-                "Lỗi hệ thống", "Lỗi trong quá trình tải folder")
+            messagebox.showerror("Lỗi hệ thống", "Lỗi trong quá trình tải folder")
 
     def download_metainfo(self, metainfo):
         peer_id = str(uuid.uuid4())
@@ -230,8 +226,10 @@ class ClientUI:
             i = 0
             while i < len(self.list_progress):
                 item = self.list_progress[i]
-                file_name_progress = item['metainfo_file']['info']['name']
 
+                if 'metainfo_file' not in item:
+                    continue
+                file_name_progress = item['metainfo_file']['info']['name']
                 if file_name_progress == name_file_download:
                     name_file_download = insert_before_extension(
                         name_file_download, idxfile)
@@ -250,8 +248,7 @@ class ClientUI:
         num_piece = math.ceil(metainfo['info']['length'] / piece_length)
         pieces = []
 
-        url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={
-            self.port}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={self.ip}"
+        url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={self.port}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={self.ip}"
         length = metainfo['info']['length']
         for i in range(num_piece):
             rest = length - i*piece_length
@@ -279,8 +276,7 @@ class ClientUI:
         try:
             response = requests.get(url)
             if response.status_code == 200:
-                messagebox.showinfo(
-                    "Download file", 'File đang được tải xuống vui lòng kiểm tra trong Downloads & Uploads')
+                messagebox.showinfo("Download file", 'File đang được tải xuống vui lòng kiểm tra trong Downloads & Uploads')
             # Giả sử server trả về JSON
                 response_data = response.json()  # Chuyển đổi thành đối tượng Python
                 self.peers += response_data.get('Peers', [])
@@ -290,12 +286,10 @@ class ClientUI:
                        args=(progress,), daemon=True).start()
 
                 # push downloadding_file to message_handshake
-                self.message_handshake['downloading_file'].append(
-                    {'info_hash': info_hash, 'peer_id': peer_id})
+                self.message_handshake['downloading_file'].append({'info_hash': info_hash, 'peer_id': peer_id})
             else:
                 messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
-                print(f"Failed to download: {
-                      response.status_code} - {response.text}")
+                print(f"Failed to download: {response.status_code} - {response.text}")
         except Exception as e:
             messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
             print(f"Error during download: {e}")
@@ -303,13 +297,7 @@ class ClientUI:
         # Hàm hiển thị nội dung Downloads
 
     def show_download_content(self):
-        # print(self.set_peers, 'set peers')
-        # print(self.connecting_peers, 'connecting peer')
-        # print(self.peers, 'peers')
-        # print('message handshake', self.message_handshake)
-        # self.update_progress = self.content_frame.after(
-        #     1000, self.show_download_content)
-        # Xóa nội dung cũ
+      
         for widget in self.content_frame.winfo_children():
             widget.destroy()
 
@@ -326,15 +314,13 @@ class ClientUI:
                 createBy = progress['metainfo_file']['createBy']
                 name = progress['metainfo_file']['info']['name']
                 percentage = (downloaded/file_length) * 100
-                infor_text = f"File {idx}: {name} \n createBy: {createBy}, uploaded: {
-                    progress['uploaded']}, downloaded: {progress['downloaded']} \n Progress: {percentage:.2f}% "
+                infor_text = f"File {idx}: {name} \n createBy: {createBy}, uploaded: {progress['uploaded']}, downloaded: {progress['downloaded']} \n Progress: {percentage:.2f}% "
             else:
                 file_length = progress['metainfo_folder']['info']['length']
                 createBy = progress['metainfo_folder']['createBy']
                 name = progress['metainfo_folder']['info']['name']
                 percentage = (downloaded/file_length) * 100
-                infor_text = f"Folder {idx}: {name} \n createBy: {createBy}, uploaded: {
-                    progress['uploaded']}, downloaded: {progress['downloaded']} \n Progress: {percentage:.2f}% "
+                infor_text = f"Folder {idx}: {name} \n createBy: {createBy}, uploaded: {progress['uploaded']}, downloaded: {progress['downloaded']} \n Progress: {percentage:.2f}% "
 
             event = progress['event']
             progress_frame = Frame(
@@ -347,8 +333,7 @@ class ClientUI:
 
             # Thêm nút dựa trên trạng thái event
             if event == "started":
-                button = Button(
-                    progress_frame, text="Pause", command=lambda progress=progress: self.pause_download(progress))
+                button = Button(progress_frame, text="Pause", command=lambda progress=progress: self.pause_download(progress))
                 button.pack(side=RIGHT, padx=10)
 
             elif event == "stopped":
@@ -371,8 +356,7 @@ class ClientUI:
         left = progress['left']
         event = 'stopped'
         # file_path = progress['file_path']
-        url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={
-            self.port}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={self.ip}"
+        url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={self.port}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={self.ip}"
 
         try:
             response = requests.get(url)
@@ -386,8 +370,7 @@ class ClientUI:
                     self.connecting_peers = gen_set_connecting_peer(
                         self.set_peers)
                 # xoa tien trinh
-                self.list_progress = [
-                    item for item in self.list_progress if not (item['info_hash'] == info_hash and item['peer_id'] == peer_id)]
+                self.list_progress = [item for item in self.list_progress if not (item['info_hash'] == info_hash and item['peer_id'] == peer_id)]
                 self.message_handshake['downloading_file'] = [message for message in self.message_handshake['downloading_file'] if not (
                     message['info_hash'] == info_hash and message['peer_id'] == peer_id)]
                 if 'folder_path' in progress:
@@ -402,8 +385,7 @@ class ClientUI:
 
             else:
                 messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
-                print(f"Failed to download: {
-                    response.status_code} - {response.text}")
+                print(f"Failed to download: {response.status_code} - {response.text}")
         except Exception as e:
             messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
             print(f"Error during download: {e}")
@@ -419,8 +401,7 @@ class ClientUI:
         downloaded = progress['downloaded']
         left = progress['left']
         event = 'stopped'
-        url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={
-            self.port}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={self.ip}"
+        url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={self.port}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={self.ip}"
         # try:
         response = requests.get(url)
         if response.status_code == 200:
@@ -438,8 +419,7 @@ class ClientUI:
         else:
             try:
                 messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
-                print(f"Failed to download: {
-                    response.status_code} - {response.text}")
+                print(f"Failed to download: {response.status_code} - {response.text}")
             except Exception as e:
                 print(e)
                 messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
@@ -454,8 +434,7 @@ class ClientUI:
         downloaded = progress['downloaded']
         left = progress['left']
         event = progress['event']
-        url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={
-            self.port}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={self.ip}"
+        url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={self.port}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={self.ip}"
 
         try:
             response = requests.get(url)
@@ -476,8 +455,7 @@ class ClientUI:
 
             else:
                 messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
-                print(f"Failed to download: {
-                    response.status_code} - {response.text}")
+                print(f"Failed to download: {response.status_code} - {response.text}")
         except Exception as e:
             messagebox.showerror("Lỗi hệ thông", 'Thử lại sau')
             print(f"Error during download: {e}")
@@ -624,28 +602,31 @@ class ClientUI:
     def isDisconnect(self, peer):
         with lockConnect:
             # Kiểm tra trong connecting_peers có peer nào có IP và port giống peer không
-            for connected_peer in self.connecting_peers:
-                if connected_peer['ip'] == peer['ip'] and connected_peer['port'] == peer['port']:
+            for connecting_peer in self.connecting_peers:
+                if connecting_peer['ip'] == peer['ip'] and connecting_peer['port'] == peer['port']:
                     return False  # Có peer với IP và port giống -> không ngắt kết nối
             return True  # Không có peer nào trùng IP và port -> ngắt kết nối
 # Chạy vòng lặp chính của Tkinter
 
     def handle_download_folder(self, progress):
+        lock_download_block = Lock()
         threads = [Thread(target=self.connect_to_peer_download_folder, args=(
-            progress, peer)) for peer in self.connecting_peers]
+            progress, peer,lock_download_block)) for peer in self.connecting_peers]
         [t.start() for t in threads]
 
     def handle_download_file(self, progress):
         # print('CONNECTING PEER', self.connecting_peers)
+        lock_download_block = Lock()
         threads = [Thread(target=self.connect_to_peer, args=(
-            progress, peer)) for peer in self.connecting_peers]
+            progress, peer, lock_download_block)) for peer in self.connecting_peers]
         [t.start() for t in threads]
 
-    def connect_to_peer_download_folder(self, progress, peer):
+    def connect_to_peer_download_folder(self, progress, peer,lock_download_block):
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        print('CONNECT TO THIS', peer)
+        print('CONNECT TO THIS DOWNLOAD FOLDER', peer)
+
         client_socket.connect((peer['ip'], peer['port']))
-        message_request_block_queue = []
+        # message_request_block_queue = []
         message_handshake = {
             "type": EMesage_Type.HANDSHAKEFOLDER.value,
             "ip": self.ip,
@@ -673,56 +654,19 @@ class ClientUI:
                         is_receive_full_response = True
                         response = response[:-5]
                 message_dict = json.loads(response.decode('utf-8'))
-                handle_message_server(
-                    client_socket, message_dict, peer, progress, message_request_block_queue)
+                handle_message_server(self,
+                    client_socket, message_dict, peer, progress,lock_download_block)
 
-            if message_request_block_queue != []:
-
-                if self.isDisconnect(peer):
-                    break
-                if progress['event'] != 'started':
-                    break
-                message_request_block = message_request_block_queue.pop(0)
-                files = progress['metainfo_folder']['info']['files']
-                downloading_file = files[message_request_block['file_index']]
-                pieces_info = downloading_file['pieces_info']
-                downloading_piece = pieces_info[message_request_block['piece_index']]
-                blocks = downloading_piece['blocks']
-                downloading_block = blocks[message_request_block['block_index']]
-                if downloading_block['isDownloaded']:
-                    continue
-
-                # print('SEND REQUEST BLOCK', message_request_block)
-                message_request_block_byte = convert_message_dict_to_byte(
-                    message_request_block)
-                message_request_block_byte
-                client_socket.sendall(message_request_block_byte)
-                client_socket.send(b'<END>')
-                is_receive_full_response = False
-                response = b''
-
-                while not is_receive_full_response:
-                    data = client_socket.recv(1024)
-                    response += data
-                    if response[-5:] == b'<END>':
-                        is_receive_full_response = True
-                        response = response[:-5]
-
-                message_dict = pickle.loads(response)
-                handle_message_server(
-                    client_socket, message_dict, peer, progress, message_request_block_queue)
 
         print('END CONNECT')
         client_socket.close()
         return client_socket
 
-    def connect_to_peer(self, progress, peer):
-        # print('thread')
-        # print('PROGRESS', progress)
-        # print('PEER', self.peers)
+    def connect_to_peer(self, progress, peer,lock_download_block ):
+        print("CONNECT TO THIS DOWNLOAD FILE", peer)
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect((peer['ip'], peer['port']))
-        message_request_block_queue = []
+        # message_request_block_queue = []
         message_handshake = {
             "type": EMesage_Type.HANDSHAKE.value,
             "ip": self.ip,
@@ -732,65 +676,35 @@ class ClientUI:
                 "peer_id": progress['peer_id']
             }
         }
-        isSent = False
-        while progress['event'] == 'started':
-            if self.isDisconnect(peer):
-                break
-            if progress['event'] != 'started':
-                break
-            if not isSent:
-                message_handshake_byte = convert_message_dict_to_byte(
-                    message_handshake)
-                client_socket.sendall(message_handshake_byte)
-                client_socket.send(b'<END>')
-                isSent = True
-                is_receive_full_response = False
-                response = b''
-                while not is_receive_full_response:
-                    data = client_socket.recv(1024)
-                    response += data
-                    if response[-5:] == b'<END>':
-                        is_receive_full_response = True
-                        response = response[:-5]
-                message_dict = json.loads(response.decode('utf-8'))
-                handle_message_server(
-                    client_socket, message_dict, peer, progress, message_request_block_queue)
-
-            if message_request_block_queue != []:
-                if self.isDisconnect(peer):
-                    break
-                if progress['event'] != 'started':
-                    break
-                message_request_block = message_request_block_queue.pop(0)
-                pieces = progress['pieces']
-                downloading_piece = pieces[message_request_block['piece_index']]
-                blocks = downloading_piece['blocks']
-                downloading_block = blocks[message_request_block['block_index']]
-                if downloading_block['isDownloaded']:
-                    continue
-
-                message_request_block_byte = convert_message_dict_to_byte(
-                    message_request_block)
-                message_request_block_byte
-                client_socket.sendall(message_request_block_byte)
-                client_socket.send(b'<END>')
-                is_receive_full_response = False
-                response = b''
-
-                while not is_receive_full_response:
-                    data = client_socket.recv(1024)
-                    response += data
-                    if response[-5:] == b'<END>':
-                        is_receive_full_response = True
-                        response = response[:-5]
-
-                message_dict = pickle.loads(response)
-                handle_message_server(
-                    client_socket, message_dict, peer, progress, message_request_block_queue)
+        # SEND_MESSAGE_HANDSHAKE
+        message_handshake_byte = convert_message_dict_to_byte(
+            message_handshake)
+        client_socket.sendall(message_handshake_byte)
+        client_socket.send(b'<END>')
+        is_receive_full_response = False
+        response = b''
+        while not is_receive_full_response:
+            data = client_socket.recv(1024)
+            response += data
+            if response[-5:] == b'<END>':
+                is_receive_full_response = True
+                response = response[:-5]
+        message_dict = json.loads(response.decode('utf-8'))
+        handle_message_server(self,
+            client_socket, message_dict, peer, progress, lock_download_block) # handle message response handshake or reject
 
         print('END CONNECT')
         return client_socket
+    
+    def select_peer_per_ten_second(self):
+        while True:
+            print('CONNECTING PEERS', self.connecting_peers)
+            self.set_peers = gen_set_peer(self.peers)
+            self.connecting_peers = gen_set_connecting_peer(self.set_peers)
+            time.sleep(10)
+            
 
     def run(self):
+        Thread(target=self.select_peer_per_ten_second, args=(), daemon=True).start()
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.root.mainloop()

@@ -123,7 +123,8 @@ def track_peer():
             "ip": peer["ip"],
             "port": peer["port"],
             "info_hash": info_hash,
-            "speed": 0}]
+            "speed": 0
+            }]
 
     # active_peers = [
     #     {
