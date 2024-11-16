@@ -9,7 +9,7 @@ load_dotenv()
 app = Flask(__name__)
 
 # Lấy URL MongoDB từ biến môi trường
-mongo_url = os.getenv('MONGO_URL')
+mongo_url = os.getenv('MONGO_SHARE')
 db_name = os.getenv('DB_NAME')
 
 # Kết nối tới MongoDB
@@ -186,4 +186,4 @@ def get_all_metainfo_files():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0", port=5000)
