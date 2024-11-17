@@ -58,8 +58,6 @@ def refresh_peers_per_30_minutes():
 
 
 # Function to get the host IP address
-
-
 def get_host_default_interface_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
