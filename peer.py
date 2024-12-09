@@ -70,14 +70,10 @@ def get_host_default_interface_ip():
 
 
 clientip = get_host_default_interface_ip()
-# port = random.randint(6000, 7000)
-port = 6001
-server_ip = '127.0.0.1'  # Replace with your server's IP
-server_port = 5000       # Replace with your server's listening port (integer)
+port = 6000
 clientUi = ClientUI(clientip, port)
 
 
-url = f"http://{server_ip}:{server_port}/metainfo-file"  # Example endpoint
 
 
 
