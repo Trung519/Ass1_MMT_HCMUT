@@ -123,7 +123,8 @@ def track_peer():
             "ip": peer["ip"],
             "port": peer["port"],
             "info_hash": info_hash,
-            "speed": 0}]
+            "speed": 0
+            }]
 
     # active_peers = [
     #     {
@@ -143,8 +144,6 @@ def track_peer():
     }), 200
 
 # POST để lưu metainfo file
-
-
 @app.route('/metainfo-file', methods=['POST'])
 def add_metainfo_file():
     data = request.json
@@ -205,4 +204,5 @@ def get_all_metainfo_files():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    server_ip = os.getenv('SERVER_IP')
+    app.run(host=server_ip, port=5000, debug=True)
