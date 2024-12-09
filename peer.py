@@ -81,56 +81,6 @@ clientUi = ClientUI(clientip, port)
 
 
 url = f"http://{server_ip}:{server_port}/metainfo-file"  # Example endpoint
-check_ip_url = f"http://{server_ip}:{server_port}/check-ip"
-
-
-def check_ip_exists(clientip, port):
-    try:
-        response = requests.get(f"{check_ip_url}/{clientip}/{port}")
-        if response.status_code == 200:
-            return response.json().get('exists', False)
-        return False
-    except Exception as e:
-        print(f"Error occurred while checking IP: {e}")
-        return False
-
-# Function to send the filename to the server via HTTP POST request
-
-
-def send_filename_to_server(filelength, pieces, name, hostname=None):
-    info_data = {
-        'piecelength': 512000,
-        'filelength': filelength,
-        'pieces': pieces,
-        'name': name
-    }
-
-    # Bencode the info dictionary
-    bencoded_info = bencodepy.encode(info_data)
-
-    # Compute SHA1 hash
-    sha1_hash = hashlib.sha1(bencoded_info).digest()
-
-    # URL-encode the hash and convert to hex
-    info_hash = urllib.parse.quote(sha1_hash.hex())
-
-    data = {
-        'info': info_data,
-        'info_hash': info_hash,
-        'createBy': hostname or "Auto-Detected",
-    }
-
-    try:
-        response = requests.post(url, json=data)
-        if response.status_code == 201:
-            print(f"File '{name}' added successfully!")
-        elif response.status_code == 409:
-            print(f"File '{name}' already exists in the database.")
-        else:
-            print(f"Failed to add file: {response.status_code} - {response.text}")
-    except Exception as e:
-        print(f"Error occurred: {e}")
-
 
 
 
@@ -177,52 +127,6 @@ def server_process():
         conn, addr = clientsocket.accept()
         nconn = Thread(target=new_connection, args=(addr, conn))
         nconn.start()
-
-def file_handshake(downloading_file, peer):
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-    client_socket.connect((peer['ip'], peer['port']))
-    message_handshake = {
-        "type": EMesage_Type.HANDSHAKE.value,
-        "ip": clientUi.ip,
-        "port": clientUi.port,
-        "file": {
-            "info_hash": downloading_file['info_hash'],
-            "peer_id": downloading_file['peer_id']
-        }
-    }
-    message_request_block_queue = []
-    progress = [item for item in clientUi.list_progress if item['peer_id'] == downloading_file['peer_id'] and item['info_hash'] == downloading_file['info_hash']]
-
-    while progress[0]['event'] != 'completed':
-        isDisconnect = clientUi.isDisconnect(peer)
-        if isDisconnect:
-            break
-        if message_handshake != {}:
-            # send_messsage_handshake
-            message_handshake_byte = convert_message_dict_to_byte(
-                message_handshake)
-            client_socket.sendall(message_handshake_byte)
-            client_socket.send(b'<END>')
-            message_handshake = {}
-            is_receive_full_response = False
-            response = b''
-            while not is_receive_full_response:
-                data = client_socket.recv(1024)
-                response += data
-                if response[-5:] == b'<END>':
-                    is_receive_full_response = True
-                    response = response[:-5]
-            message_dict = json.loads(response.decode('utf-8'))
-
-            handle_message_server(
-                client_socket, message_dict, peer, clientUi.list_progress, isDisconnect)
-
-    print('END CONNECT')
-    return client_socket
-
-
-
 
 
 if __name__ == "__main__":

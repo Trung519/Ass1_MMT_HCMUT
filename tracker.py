@@ -24,31 +24,6 @@ metainfo_file_collection = db['metainfo_file']
 clients_db = db['peers']
 
 
-@app.route('/check-ip/<ip>/<int:port>', methods=['GET'])
-def check_ip(ip, port):
-    # Check if the IP and port exist in the 'peers' collection
-    client = clients_db.find_one({'ip': ip, 'port': port})
-
-    if client:
-        # If IP and port exist, return a message indicating its presence
-        return jsonify({'exists': True, 'id': str(client['_id']), 'hostname': client['hostname']})
-    else:
-        # If IP and port don't exist, add it to the database with 'id' and 'hostname'
-        # Get hostname from query params (default: 'unknown')
-        hostname = request.args.get('hostname', 'unknown')
-
-        # Insert new client document with 'id', 'ip', 'port', and 'hostname'
-        new_client = {
-            '_id': ObjectId(),  # Generate a new unique ID
-            'ip': ip,
-            'port': port,
-            'hostname': hostname
-        }
-        clients_db.insert_one(new_client)
-
-        # Return the new client info
-        return jsonify({'exists': False, 'id': str(new_client['_id']), 'hostname': hostname})
-
 
 # GET API để nhận tham số query và lưu vào tracking_peer
 @app.route('/track-peer', methods=['GET'])
@@ -145,7 +120,7 @@ def track_peer():
 
 # POST để lưu metainfo file
 @app.route('/metainfo-file', methods=['POST'])
-def add_metainfo_file():
+def add_metainfo():
     data = request.json
 
     # print('data')
@@ -170,29 +145,10 @@ def add_metainfo_file():
     }), 201
 
 
-# GET API để lấy metainfo file theo ObjectId
-@app.route('/metainfo-file/<id>', methods=['GET'])
-def get_metainfo_file(id):
-    try:
-        # Chuyển chuỗi id thành ObjectId
-        object_id = ObjectId(id)
-    except:
-        return jsonify({"error": "Invalid ObjectId"}), 400
-
-    # Tìm document theo ObjectId
-    metainfo = metainfo_file_collection.find_one({"_id": object_id})
-
-    if metainfo:
-        # Chuyển ObjectId thành chuỗi để trả về trong JSON
-        metainfo['_id'] = str(metainfo['_id'])
-        return jsonify(metainfo), 200
-    else:
-        return jsonify({"error": "Metainfo file not found"}), 404
-
 
 # GET API để lấy tất cả metainfo file
 @app.route('/metainfo-files', methods=['GET'])
-def get_all_metainfo_files():
+def get_all_metainfo():
     # Lấy tất cả các document từ collection metainfo_file
     metainfo_files = list(metainfo_file_collection.find())
 
