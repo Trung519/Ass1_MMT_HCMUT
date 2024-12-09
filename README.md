@@ -203,3 +203,6 @@ progress_folder = {
 
 
 
+
+# Tạo thư mục Repo
+tạo thư mục repo trước khi chạy ứng dụng
