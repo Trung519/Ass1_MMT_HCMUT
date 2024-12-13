@@ -13,8 +13,9 @@ import time
 
 
 class ClientUI:
-    def __init__(self, ip, port):
+    def __init__(self, ip, port, server_url):
         self.ip = ip
+        self.server_url = server_url
         self.peers = []
         self.set_peers = []
         self.connecting_peers = []
@@ -162,7 +163,7 @@ class ClientUI:
         uploaded = 0
         downloaded = 0
         event = 'started'
-        url = f"{server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={
+        url = f"{self.server_url}/track-peer?info_hash={info_hash}&peer_id={peer_id}&port={
             self.port}&uploaded={uploaded}&downloaded={downloaded}&left={left}&event={event}&ip={self.ip}"
 
         for j in range(len(metainfo['info']['files'])):

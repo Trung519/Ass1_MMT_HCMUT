@@ -16,7 +16,7 @@ import json
 from message_type import EMesage_Type
 import pickle
 from tqdm import tqdm
-
+import sys
 
 stop_event = threading.Event()
 
@@ -56,25 +56,81 @@ def refresh_peers_per_30_minutes():
 
 # Function to get the host IP address
 
+# server_ip = "192.168.130.62"  # Replace with your server's IP
+# server_port = 5000
 
 def get_host_default_interface_ip():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        s.connect(('8.8.8.8', 1))
-        ip = s.getsockname()[0]
-    except Exception:
-        ip = '127.0.0.1'
-    finally:
-        s.close()
-    return ip
+    # s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # try:
+    #     s.connect(('8.8.8.8', 1))
+    #     ip = s.getsockname()[0]
+    # except Exception:
+    #     ip = '127.0.0.1'
+    # finally:
+    #     s.close()
+    # return ip
+    return "192.168.130.41"
 
 
 clientip = get_host_default_interface_ip()
-port = 6000
-clientUi = ClientUI(clientip, port)
+# port = random.randint(6000, 7000)
+port = 1234
+server_ip = sys.argv[1]  # Replace with your server's IP
+server_port = sys.argv[2]       # Replace with your server's listening port (integer)
+server_url = f"http://{server_ip}:{server_port}"
+clientUi = ClientUI(clientip, port, server_url)
 
 
+url = f"http://{server_ip}:{server_port}/metainfo-file"  # Example endpoint
+check_ip_url = f"http://{server_ip}:{server_port}/check-ip"
 
+
+def check_ip_exists(clientip, port):
+    try:
+        response = requests.get(f"{check_ip_url}/{clientip}/{port}")
+        if response.status_code == 200:
+            return response.json().get('exists', False)
+        return False
+    except Exception as e:
+        print(f"Error occurred while checking IP: {e}")
+        return False
+
+# Function to send the filename to the server via HTTP POST request
+
+
+def send_filename_to_server(filelength, pieces, name, hostname=None):
+    info_data = {
+        'piecelength': 512000,
+        'filelength': filelength,
+        'pieces': pieces,
+        'name': name
+    }
+
+    # Bencode the info dictionary
+    bencoded_info = bencodepy.encode(info_data)
+
+    # Compute SHA1 hash
+    sha1_hash = hashlib.sha1(bencoded_info).digest()
+
+    # URL-encode the hash and convert to hex
+    info_hash = urllib.parse.quote(sha1_hash.hex())
+
+    data = {
+        'info': info_data,
+        'info_hash': info_hash,
+        'createBy': hostname or "Auto-Detected",
+    }
+
+    try:
+        response = requests.post(url, json=data)
+        if response.status_code == 201:
+            print(f"File '{name}' added successfully!")
+        elif response.status_code == 409:
+            print(f"File '{name}' already exists in the database.")
+        else:
+            print(f"Failed to add file: {response.status_code} - {response.text}")
+    except Exception as e:
+        print(f"Error occurred: {e}")
 
 
 def new_connection(addr, conn):
@@ -120,6 +176,52 @@ def server_process():
         conn, addr = clientsocket.accept()
         nconn = Thread(target=new_connection, args=(addr, conn))
         nconn.start()
+
+def file_handshake(downloading_file, peer):
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    client_socket.connect((peer['ip'], peer['port']))
+    message_handshake = {
+        "type": EMesage_Type.HANDSHAKE.value,
+        "ip": clientUi.ip,
+        "port": clientUi.port,
+        "file": {
+            "info_hash": downloading_file['info_hash'],
+            "peer_id": downloading_file['peer_id']
+        }
+    }
+    message_request_block_queue = []
+    progress = [item for item in clientUi.list_progress if item['peer_id'] == downloading_file['peer_id'] and item['info_hash'] == downloading_file['info_hash']]
+
+    while progress[0]['event'] != 'completed':
+        isDisconnect = clientUi.isDisconnect(peer)
+        if isDisconnect:
+            break
+        if message_handshake != {}:
+            # send_messsage_handshake
+            message_handshake_byte = convert_message_dict_to_byte(
+                message_handshake)
+            client_socket.sendall(message_handshake_byte)
+            client_socket.send(b'<END>')
+            message_handshake = {}
+            is_receive_full_response = False
+            response = b''
+            while not is_receive_full_response:
+                data = client_socket.recv(1024)
+                response += data
+                if response[-5:] == b'<END>':
+                    is_receive_full_response = True
+                    response = response[:-5]
+            message_dict = json.loads(response.decode('utf-8'))
+
+            handle_message_server(
+                client_socket, message_dict, peer, clientUi.list_progress, isDisconnect)
+
+    print('END CONNECT')
+    return client_socket
+
+
+
 
 
 if __name__ == "__main__":

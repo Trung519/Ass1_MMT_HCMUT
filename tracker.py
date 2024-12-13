@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 from dotenv import load_dotenv
+import sys
 
 load_dotenv()
 
@@ -162,5 +163,5 @@ def get_all_metainfo():
 
 
 if __name__ == '__main__':
-    server_ip = os.getenv('SERVER_IP')
-    app.run(host=server_ip, port=5000, debug=True)
+    server_ip = os.getenv("SERVER_IP")
+    app.run(host="192.168.130.62", port=int(sys.argv[1]), debug=True)
